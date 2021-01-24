@@ -1,0 +1,17 @@
+.displayContent{
+    margin-left: 2em;
+}
+
+h3{
+    font-size: medium;
+    font-weight: bolder;
+}
+
+.minBtn{
+    line-height: 20px;
+}
+
+.triadDescription{
+    display: inline;
+    font-family: cursive;
+}

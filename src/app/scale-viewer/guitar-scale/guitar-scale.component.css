@@ -1,0 +1,50 @@
+.guitarArmHolder{
+    margin-left: 2em;
+    margin-right: 2em;
+}
+
+.guitarArm{
+    border: 2px black;
+    fill: burlywood;
+}
+
+
+.svgFont{
+    font-weight: bold;
+    font-family: monospace;
+}
+
+.string{
+    fill: gray;
+}
+
+.noteOnFret{
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 10.5pt;
+    border:10px;
+    border-radius: 50%;
+    fill: navajowhite;
+}
+
+.selectedNote{
+    fill:floralwhite;
+    font-weight: bold;
+    font-family: sans-serif;
+    font-size: 10.0pt;
+    border:10px;
+    border-radius: 50%;
+}
+
+.invisibleMarker{
+    visibility: hidden;
+    display: none;
+}
+
+.selectedMarker{
+    fill: steelblue;
+}
+
+.rootMarker{
+    fill: red;
+}

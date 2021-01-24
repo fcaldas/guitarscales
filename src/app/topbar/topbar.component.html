@@ -1,0 +1,19 @@
+<nav>
+    <div class="nav-wrapper">
+      <a class="brand-logo">&nbsp;Music Tools</a>
+      <ul id="nav-mobile" class="right hide-on-med-and-down">
+        <!-- <li><a routerLink="photography">Photography</a></li> -->
+        <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Music">
+          <mat-icon>music_note</mat-icon>
+        </button>
+        <mat-menu #menu="matMenu">
+          <button mat-menu-item routerLink="scales">
+            <mat-icon>library_music</mat-icon>
+            <span>Scales</span>
+          </button>
+        </mat-menu>
+        <li><a href="http://www.github.com/fcaldas">Github</a></li> 
+        <li><a routerLink="blog">Blog</a></li> 
+      </ul>
+    </div>
+  </nav>
