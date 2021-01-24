@@ -4,7 +4,7 @@
 <h4>Scale explorer</h4>
 <mat-form-field appearance="fill">
   <mat-label>Root note</mat-label>
-  <mat-select [formControl]="selected" [errorStateMatcher]="matcher">
+  <mat-select [formControl]="selected">
     <mat-option *ngFor="let c of notes" value="{{c}}">{{printNote(c)}}</mat-option>
   </mat-select>
   <!-- <mat-hint>Errors appear instantly!</mat-hint> -->
@@ -13,7 +13,7 @@
 
 <mat-form-field appearance="fill">
     <mat-label>Select a scale</mat-label>
-    <mat-select [formControl]="selected_scale" [errorStateMatcher]="matcher">
+    <mat-select [formControl]="selected_scale">
       <mat-option *ngFor="let c of scale_names" value="{{c}}">{{printNote(c)}}</mat-option>
     </mat-select>
     <mat-error *ngIf="selected_scale.hasError('required')">You must make a selection</mat-error>

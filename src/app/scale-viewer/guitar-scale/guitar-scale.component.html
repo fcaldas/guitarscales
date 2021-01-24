@@ -25,29 +25,29 @@
         <text x="74.6%" y="195" class="svgFont">IX</text>
 
         <!-- Add strings! -->
-        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[0])" let-i="index" [ngForTrackBy]="trackByFn">
+        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[0])" let-i="index">
             <circle [attr.cx]="getNotePos(i, true)" [attr.cy]="stringHeights[0]" r='15' [ngClass]='getClassForMarker(item)'></circle>
-            <text [attr.x]="getNotePos(i)" [attr.y]="stringHeights[0]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
+            <text [attr.x]="getNotePos(i, false)" [attr.y]="stringHeights[0]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
         </ng-template>
-        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[1])" let-i="index" [ngForTrackBy]="trackByFn">
+        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[1])" let-i="index">
             <circle [attr.cx]="getNotePos(i, true)" [attr.cy]="stringHeights[1]" r='15' [ngClass]='getClassForMarker(item)'></circle>
-            <text [attr.x]="getNotePos(i)" [attr.y]="stringHeights[1]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
+            <text [attr.x]="getNotePos(i, false)" [attr.y]="stringHeights[1]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
         </ng-template>
-        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[2])" let-i="index" [ngForTrackBy]="trackByFn">
+        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[2])" let-i="index">
             <circle [attr.cx]="getNotePos(i, true)" [attr.cy]="stringHeights[2]" r='15' [ngClass]='getClassForMarker(item)'></circle>
-            <text [attr.x]="getNotePos(i)" [attr.y]="stringHeights[2]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
+            <text [attr.x]="getNotePos(i, false)" [attr.y]="stringHeights[2]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
         </ng-template>
-        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[3])" let-i="index" [ngForTrackBy]="trackByFn">
+        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[3])" let-i="index">
             <circle [attr.cx]="getNotePos(i, true)" [attr.cy]="stringHeights[3]" r='15' [ngClass]='getClassForMarker(item)'></circle>
-            <text [attr.x]="getNotePos(i)" [attr.y]="stringHeights[3]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
+            <text [attr.x]="getNotePos(i, false)" [attr.y]="stringHeights[3]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
         </ng-template>
-        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[4])" let-i="index" [ngForTrackBy]="trackByFn">
+        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[4])" let-i="index">
             <circle [attr.cx]="getNotePos(i, true)" [attr.cy]="stringHeights[4]" r='15' [ngClass]='getClassForMarker(item)'></circle>
-            <text [attr.x]="getNotePos(i)" [attr.y]="stringHeights[4]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
+            <text [attr.x]="getNotePos(i, false)" [attr.y]="stringHeights[4]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
         </ng-template>
-        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[5])" let-i="index" [ngForTrackBy]="trackByFn">
+        <ng-template ngFor let-item [ngForOf]="generate_notes_in_string(notes_in_string[5])" let-i="index">
             <circle [attr.cx]="getNotePos(i, true)" [attr.cy]="stringHeights[5]" r='15' [ngClass]='getClassForMarker(item)'></circle>
-            <text [attr.x]="getNotePos(i)" [attr.y]="stringHeights[5]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
+            <text [attr.x]="getNotePos(i, false)" [attr.y]="stringHeights[5]+4" [ngClass]='getClassForNote(item)'>{{item.note}}</text>
         </ng-template>
     </g>
     </svg>

@@ -14,7 +14,7 @@ export class BlogComponent implements OnInit {
   constructor() {
   }
 
-  postlist : Blogpost[] = [post2, post1];
+  postlist : Blogpost[] = [];
 
   ngOnInit() {
   }

@@ -1,9 +1,0 @@
-<mat-grid-list cols="4" rowHeight="400px">
-    <mat-grid-tile
-        *ngFor="let tile of tiles.slice(0, max_display); let i = index"
-        [colspan]="tile.cols"
-        [rowspan]="tile.rows"
-        [style.background]="bg_colors[i%bg_colors.length]">
-      <app-picture [tile]="tile" class="animated fadeIn"></app-picture>
-    </mat-grid-tile>
-</mat-grid-list>

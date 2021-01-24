@@ -1,6 +1,6 @@
 <div class="displayContent">
 <h3 *ngIf="selected_notes">Triads in scale</h3>
-<div *ngFor="let note of selected_notes; index as i; trackBy: trackByFn">
+<div *ngFor="let note of selected_notes; index as i;">
   <button mat-flat-button class="minBtn" color="primary" (click)="play_triad(i, note)">
         play
   </button>

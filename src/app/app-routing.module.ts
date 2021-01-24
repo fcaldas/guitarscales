@@ -1,6 +1,5 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
-import {PicturegalleryComponent} from './picturegallery/picturegallery.component';
 import {BlogComponent} from './blog/blog.component';
 import {ScaleViewerComponent} from './scale-viewer/scale-viewer.component';
 

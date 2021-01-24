@@ -38,7 +38,7 @@
               "node_modules/jquery/dist/jquery.js",
               "node_modules/bootstrap/dist/js/bootstrap.js",
               "node_modules/prismjs/prism.js",
-              "node_modules/prismjs/components/prism-csharp.min.js", 
+              "node_modules/prismjs/components/prism-csharp.min.js",
               "node_modules/prismjs/components/prism-css.min.js",
               "node_modules/prismjs/plugins/line-numbers/prism-line-numbers.js"
             ]
@@ -134,6 +134,10 @@
               "devServerTarget": "fcaldas:serve:production"
             }
           }
+        },
+        "deploy": {
+          "builder": "angular-cli-ghpages:deploy",
+          "options": {}
         }
       }
     }
