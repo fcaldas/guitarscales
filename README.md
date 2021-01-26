@@ -16,7 +16,7 @@ Run `ng build` to build the project. The build artifacts will be stored in the `
 
 ## Deploy
 
-`ng deploy --base-href=/music_theory_viewer/`
+`ng deploy --base-href=/guitarscales/`
 
 ## Running unit tests
 
@@ -28,7 +28,7 @@ Run `ng e2e` to execute the end-to-end tests via [Protractor](http://www.protrac
 
 ## Demo:
 
-[View this project](https://fcaldas.github.io/music_theory_viewer/)
+[View this project](https://fcaldas.github.io/guitarscales/)
 
 ## Further help
 
