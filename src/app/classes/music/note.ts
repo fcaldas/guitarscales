@@ -1,36 +1,36 @@
-export enum NoteName{
+export enum NoteName {
     // Ab="Ab",
-    A="A",
-    As="A#",
+    A = "A",
+    As = "A#",
     // Bb="Bb",
-    B="B",
-    Bs="Bs",
+    B = "B",
+    Bs = "Bs",
     // Cb="Cb",
-    C="C",
-    Cs="C#",
+    C = "C",
+    Cs = "C#",
     // Db="Db",
-    D="D",
-    Ds="D#",
+    D = "D",
+    Ds = "D#",
     // Eb="Eb",
-    E="E",
-    Es="E#",
+    E = "E",
+    Es = "E#",
     // Fb="Fb",
-    F="F",
-    Fs="F#",
+    F = "F",
+    Fs = "F#",
     // Gb="Gb",
-    G="G",
-    Gs="G#"
+    G = "G",
+    Gs = "G#"
 }
 
-export function getNote(name: string) : Note{
+export function getNote(name: string): Note {
     name = name.replace("#", "s");
     return new Note(NoteName[name], 4);
 }
 
 export enum Interval {
-    semitone= 1,
-    tone= 2,
-    augmented= 3,
+    semitone = 1,
+    tone = 2,
+    augmented = 3,
 }
 
 const NoteValues = {
@@ -47,7 +47,7 @@ const NoteValues = {
     [NoteName.Fs]: 6,
     //[NoteName.Gb]: 6,
     [NoteName.G]: 7,
-    [NoteName.Gs]:8,
+    [NoteName.Gs]: 8,
     //[NoteName.Ab]:8,
     [NoteName.A]: 9,
     [NoteName.As]: 10,
@@ -57,9 +57,9 @@ const NoteValues = {
     //[NoteName.Cb]: 11,
 }
 
-let invert = function(){
+let invert = function () {
     let c = {};
-    for(let k of Object.keys(NoteValues)){
+    for (let k of Object.keys(NoteValues)) {
         c[NoteValues[k]] = k;
     }
     return c;
@@ -72,18 +72,18 @@ export class Note {
     note: NoteName;
     degree: number;
 
-    constructor(note: NoteName, degree=4){
+    constructor(note: NoteName, degree = 4) {
         this.note = note;
         this.degree = degree;
     }
 
-    toString(){
+    toString() {
         return this.note.toString().replace("s", "#") + this.degree.toString();
     }
 
-    addInterval(transition: Interval) : Note{
+    addInterval(transition: Interval): Note {
         let value = (NoteValues[this.note] + transition);
-        if (value > 11){
+        if (value > 11) {
             value -= 12;
             return new Note(ValueToNotes[value], this.degree + 1);
         }
@@ -91,7 +91,7 @@ export class Note {
     }
 }
 
-export function getTriadName(notes: Note[]): string{
+export function getTriadName(notes: Note[]): string {
     // third major = 2 tones
     // third minor = 1 tone & 1 semitone
     // fifth       = 3 tones & 1 semitone
@@ -100,11 +100,11 @@ export function getTriadName(notes: Note[]): string{
     let semitones_to_third = 0;
     let semitones_to_fifth = 0;
     let done = false;
-    while(!done){
-        if(n1.note == notes[1].note){
+    while (!done) {
+        if (n1.note == notes[1].note) {
             semitones_to_third = n_semitones;
         }
-        if(n1.note == notes[2].note){
+        if (n1.note == notes[2].note) {
             semitones_to_fifth = n_semitones;
             done = true;
         }
@@ -113,13 +113,16 @@ export function getTriadName(notes: Note[]): string{
     }
     let chordName = notes[0].note;
     let modifier = "";
-    if (semitones_to_third == 3){
+    if (semitones_to_third == 3 && semitones_to_fifth == 7) {
         modifier = "m";
-        if(semitones_to_fifth == 6){
-            modifier = 'o';
-        }
-    }else if(semitones_to_third == 4 && semitones_to_fifth == 8){
+    } else if (semitones_to_third == 3 && semitones_to_fifth == 6) {
+        modifier = 'o';
+    } else if (semitones_to_third == 4 && semitones_to_fifth == 7) {
+        modifier = ''; // major chord
+    } else if (semitones_to_third == 4 && semitones_to_fifth == 8) {
         modifier = '+';
+    } else {
+        modifier = "(", +semitones_to_third.toString() + ", " + semitones_to_fifth.toString() + ")";
     }
-    return chordName + modifier + semitones_to_third.toString() + "," + semitones_to_fifth.toString();
+    return chordName + modifier;
 }
