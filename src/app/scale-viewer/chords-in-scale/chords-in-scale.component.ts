@@ -1,5 +1,8 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { Note, NoteName, getTriadName} from './../../classes/music/note';
+import { Note, NoteName, Chord} from './../../classes/music/note';
+import { Triad } from '../../classes/music/triad.ts';
+import { Tetrad } from '../../classes/music/tetrads.ts';
+
 import * as Tone from 'tone';
 
 @Component({
@@ -28,7 +31,19 @@ export class ChordsInScaleComponent implements OnInit {
 
   }
 
-  get_triad(degree:number, note:Note): Note[]{
+
+  getChords(): Chord[]{
+    let triads = [];
+    let idx = 1;
+    for(let note of (this.selected_notes || [])) {
+      triads.push(this.get_triad(idx, note));
+      idx += 1;
+    }
+    return triads;
+  }
+
+
+  get_triad(degree:number, note:Note): Triad{
     let triad = [note];
     let sec_degree = degree + 2;
     let third_degree = degree + 4;
@@ -51,16 +66,11 @@ export class ChordsInScaleComponent implements OnInit {
         this.selected_notes[third_degree].degree+1)
       );
     }
-    return triad;
+    return new Triad(triad);
   }
 
-  get_triad_name(degree:number, note:Note): string{
-    let triad = this.get_triad(degree, note);
-    if(triad.length == 3){
-      return getTriadName(triad);
-    }else{
-      return "invalid"; 
-    }
+  get_triad_name(chord: Chord): string{
+    return chord.getName();
   }
 
   play_triad(degree: number, note: Note){
