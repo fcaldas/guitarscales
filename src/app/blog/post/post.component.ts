@@ -8,7 +8,7 @@ import { Blogpost } from '../../blogpost';
 })
 export class PostComponent implements OnInit {
 
-  @Input() data:Blogpost;
+  @Input() data: Blogpost;
 
   constructor() {
   }

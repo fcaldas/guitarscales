@@ -34,27 +34,27 @@ export class ScaleViewerComponent implements OnInit {
     Validators.pattern('.*'),
   ]);
 
-  printNote(notename: string) : string{
-    return notename.replace("s", "#");
+  printNote(notename: string): string {
+    return notename.replace('s', '#');
   }
 
   playNote() {
-    let root = getNote(this.selected.value);
-    let scale = new Scale(root, ScaleTypes[this.selected_scale.value]);
+    const root = getNote(this.selected.value);
+    const scale = new Scale(root, ScaleTypes[this.selected_scale.value]);
     console.log(scale.toString());
-    
-    var t_from_now=0;
-    let now = Tone.now();
-    for(let n of scale.getNotesInScale()){
-      this.synth.triggerAttackRelease(n.toString(), "8n", now + t_from_now);
-      t_from_now += .5; 
+
+    let t_from_now = 0;
+    const now = Tone.now();
+    for (const n of scale.getNotesInScale()) {
+      this.synth.triggerAttackRelease(n.toString(), '8n', now + t_from_now);
+      t_from_now += .5;
     }
   }
 
-  changeSelection(){
-    if(this.selected.value && this.selected_scale.value){
-      let root = getNote(this.selected.value);
-      let scale = new Scale(root, ScaleTypes[this.selected_scale.value]);
+  changeSelection() {
+    if (this.selected.value && this.selected_scale.value) {
+      const root = getNote(this.selected.value);
+      const scale = new Scale(root, ScaleTypes[this.selected_scale.value]);
       this.notes_display = scale.getNotesInScale();
       console.log(this.notes_display);
     }

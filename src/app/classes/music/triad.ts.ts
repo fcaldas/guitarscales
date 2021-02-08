@@ -1,6 +1,6 @@
 import { Note, Interval, Chord } from './note';
 
-export class Triad implements Chord{
+export class Triad implements Chord {
 
     notes: Note[];
 
@@ -28,10 +28,10 @@ export class Triad implements Chord{
             n1 = n1.addInterval(Interval.semitone);
             n_semitones += 1;
         }
-        let chordName = this.notes[0].note;
-        let modifier = "";
+        const chordName = this.notes[0].note;
+        let modifier = '';
         if (semitones_to_third == 3 && semitones_to_fifth == 7) {
-            modifier = "m";
+            modifier = 'm';
         } else if (semitones_to_third == 3 && semitones_to_fifth == 6) {
             modifier = 'o';
         } else if (semitones_to_third == 4 && semitones_to_fifth == 7) {
@@ -39,7 +39,8 @@ export class Triad implements Chord{
         } else if (semitones_to_third == 4 && semitones_to_fifth == 8) {
             modifier = '+';
         } else {
-            modifier = "(", +semitones_to_third.toString() + ", " + semitones_to_fifth.toString() + ")";
+            modifier = ' (' + semitones_to_third.toString() + ', ' + semitones_to_fifth.toString() + ')';
+
         }
         return chordName + modifier;
     }
@@ -51,9 +52,10 @@ export class Triad implements Chord{
 
     asString(): string {
         let noteNames: string[];
-        for(let k of this.notes)
+        for (const k of this.notes) {
             noteNames.push(k.toString());
+        }
         console.log(noteNames);
-        return noteNames.join(", ");
+        return noteNames.join(', ');
     }
 }

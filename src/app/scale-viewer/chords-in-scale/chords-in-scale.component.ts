@@ -23,64 +23,61 @@ export class ChordsInScaleComponent implements OnInit {
 
     ).toDestination();
     this.synth.set({
-      envelope:{
+      envelope: {
         attack: .015,
         sustain: .1,
       }
-    })
+    });
 
   }
 
 
-  getChords(): Chord[]{
-    let triads = [];
-    let idx = 1;
-    for(let note of (this.selected_notes || [])) {
-      triads.push(this.get_triad(idx, note));
+  getChords(): Chord[] {
+    const triads = [];
+    let idx = 0;
+    for (const note of (this.selected_notes || [])) {
+      if (idx !== 7) {
+          triads.push(this.get_triad(idx, note));
+      }
       idx += 1;
     }
     return triads;
   }
 
 
-  get_triad(degree:number, note:Note): Triad{
-    let triad = [note];
+  get_triad(degree: number, note: Note): Triad {
+    const triad = [note];
     let sec_degree = degree + 2;
     let third_degree = degree + 4;
-    if(sec_degree < this.selected_notes.length){
+    if (sec_degree < this.selected_notes.length) {
       triad.push(this.selected_notes[sec_degree]);
-    }else{
+    } else {
       sec_degree -= this.selected_notes.length - 1;
       triad.push(new Note(
         this.selected_notes[sec_degree].note,
-        this.selected_notes[sec_degree].degree+1)
+        this.selected_notes[sec_degree].degree + 1)
       );
     }
 
-    if(third_degree < this.selected_notes.length){
+    if (third_degree < this.selected_notes.length) {
       triad.push(this.selected_notes[third_degree]);
-    }else{
+    } else {
       third_degree -= this.selected_notes.length - 1;
       triad.push(new Note(
         this.selected_notes[third_degree].note,
-        this.selected_notes[third_degree].degree+1)
+        this.selected_notes[third_degree].degree + 1)
       );
     }
     return new Triad(triad);
   }
 
-  get_triad_name(chord: Chord): string{
-    return chord.getName();
-  }
-
-  play_triad(degree: number, note: Note){
-    let triad = this.get_triad(degree, note);
-    let now = Tone.now();
+  playChord(chord: Chord) {
+    const now = Tone.now();
     let k = 0;
-    for(let n of triad){
-      this.synth.triggerAttackRelease(n.toString(), "8n", now + .1 * k);
+    for (const n of chord.notes) {
+      this.synth.triggerAttackRelease(n.toString(), '8n', now + .1 * k);
       k += 1;
-      this.synth.triggerAttackRelease(n.toString(), "8n", now + 1);
+      this.synth.triggerAttackRelease(n.toString(), '8n', now + 1);
     }
   }
 }

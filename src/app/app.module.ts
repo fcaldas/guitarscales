@@ -5,7 +5,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { TopbarComponent } from './topbar/topbar.component';
-import { MatButtonModule, MatSidenavModule, MatCardModule, MatIconModule, MatNativeDateModule, MatDatepickerModule,MatFormFieldModule,MatInputModule} from '@angular/material';
+import { MatButtonModule, MatSidenavModule, MatCardModule, MatIconModule, MatNativeDateModule, MatDatepickerModule, MatFormFieldModule, MatInputModule} from '@angular/material';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {HttpClientModule} from '@angular/common/http';
 import {DemoMaterialModule} from './material-module';
@@ -36,7 +36,7 @@ import { ChordsInScaleComponent } from './scale-viewer/chords-in-scale/chords-in
     MatSidenavModule,
     MatCardModule,
     MatIconModule,
-    MatNativeDateModule, 
+    MatNativeDateModule,
     MatDatepickerModule,
     MatFormFieldModule,
     MatInputModule ,

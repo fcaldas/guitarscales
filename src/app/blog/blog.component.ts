@@ -10,11 +10,11 @@ import { PostComponent } from './post/post.component';
 
 export class BlogComponent implements OnInit {
 
-  
+
   constructor() {
   }
 
-  postlist : Blogpost[] = [];
+  postlist: Blogpost[] = [];
 
   ngOnInit() {
   }
