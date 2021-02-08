@@ -74,6 +74,9 @@ const locrian_mode = new Intervals([Interval.semitone, Interval.tone, Interval.t
 
 const pentatonic_scale = new Intervals([Interval.tone, Interval.tone, Interval.augmented, Interval.tone, Interval.augmented]);
 
+//whole, half, whole, whole, half, augmented second, half
+const harmonic_minor = new Intervals([Interval.tone, Interval.semitone, Interval.tone, Interval.tone, Interval.semitone, Interval.augmented, Interval.semitone]);
+
 export let ScaleTypes = {
     'Major (Ionian)': major_scale,
     'Dorian (D)': dorian_mode,
@@ -82,5 +85,6 @@ export let ScaleTypes = {
     'Mixolydian (G)': mixolydian_mode,
     'Natural Minor (Aeolian)': natural_minor_scale,
     'Locrian (B)': locrian_mode,
-    Pentatonic: pentatonic_scale
+    'Pentatonic': pentatonic_scale,
+    'Harmonic Minor': harmonic_minor
 };

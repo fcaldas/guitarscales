@@ -1,7 +1,7 @@
 
 <div class="mainContent">
 
-<h4>Scale explorer</h4>
+<h3>Scale explorer</h3>
 <mat-form-field appearance="fill">
   <mat-label>Root note</mat-label>
   <mat-select [formControl]="selected">
@@ -18,7 +18,16 @@
     </mat-select>
     <mat-error *ngIf="selected_scale.hasError('required')">You must make a selection</mat-error>
 </mat-form-field>
-  
+ 
+<mat-form-field appearance="fill">
+    <mat-label>Voicing</mat-label>
+    <mat-select [formControl]="selected_voicing">
+      <mat-option value="triad">Triad</mat-option>
+      <mat-option value="tetrad">Tetrad</mat-option>
+    </mat-select>
+    <mat-error *ngIf="selected_voicing.hasError('required')">You must make a selection</mat-error>
+</mat-form-field>
+   
 &nbsp;&nbsp;
 <button mat-fab color="primary" (click)="playNote()">
     <mat-icon>play_arrow</mat-icon>
@@ -28,4 +37,4 @@
 
 <app-guitar-scale [selected_notes]="notes_display"></app-guitar-scale>
 
-<app-chords-in-scale [selected_notes]="notes_display"></app-chords-in-scale>
+<app-chords-in-scale [selected_notes]="notes_display" [voicing]="selected_voicing"></app-chords-in-scale>

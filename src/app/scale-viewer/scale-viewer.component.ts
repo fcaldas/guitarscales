@@ -34,6 +34,11 @@ export class ScaleViewerComponent implements OnInit {
     Validators.pattern('.*'),
   ]);
 
+  selected_voicing = new FormControl(null, [
+    Validators.required,
+    Validators.pattern('.*'),
+  ]);
+
   printNote(notename: string): string {
     return notename.replace('s', '#');
   }
@@ -56,7 +61,6 @@ export class ScaleViewerComponent implements OnInit {
       const root = getNote(this.selected.value);
       const scale = new Scale(root, ScaleTypes[this.selected_scale.value]);
       this.notes_display = scale.getNotesInScale();
-      console.log(this.notes_display);
     }
   }
 

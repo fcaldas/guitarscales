@@ -1,5 +1,5 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { Note, NoteName, Chord} from './../../classes/music/note';
+import { Note, NoteName, Chord, Interval} from './../../classes/music/note';
 import { Triad } from '../../classes/music/triad.ts';
 import { Tetrad } from '../../classes/music/tetrads.ts';
 
@@ -14,6 +14,9 @@ export class ChordsInScaleComponent implements OnInit {
 
   @Input()
   selected_notes: Note[];
+  @Input()
+  voicing: string;
+
   synth: Tone.PolySynth;
 
   constructor() { }
@@ -79,5 +82,9 @@ export class ChordsInScaleComponent implements OnInit {
       k += 1;
       this.synth.triggerAttackRelease(n.toString(), '8n', now + 1);
     }
+  }
+
+  playChorda() {
+    console.log("Chorda");
   }
 }
