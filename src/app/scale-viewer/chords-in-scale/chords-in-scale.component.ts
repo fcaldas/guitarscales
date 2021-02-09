@@ -75,6 +75,8 @@ export class ChordsInScaleComponent implements OnInit {
   }
 
   playChord(chord: Chord) {
+    console.log("Playing..");
+    console.log(chord);
     const now = Tone.now();
     let k = 0;
     for (const n of chord.notes) {
