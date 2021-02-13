@@ -28,6 +28,6 @@ describe('ScaleViewerComponent', () => {
 // Test if C major is correctly generated
 it('should correctly generate scales C major', async(() => {
   let c4 = new Note(NoteName.C, 4);
-  let scale = new Scale(c4, ScaleTypes.Major);
-  expect(scale.getNotesInScale()).toEqual([]);
+  let scale = new Scale(c4, ScaleTypes['Major (Ionian)']);
+  expect(scale.getNotesInScale()[0]).toEqual(new Note(NoteName.C, 4));
 }));
