@@ -34,7 +34,7 @@ export class ScaleViewerComponent implements OnInit {
     Validators.pattern('.*'),
   ]);
 
-  selected_voicing = new FormControl(null, [
+  selected_voicing = new FormControl("triad", [
     Validators.required,
     Validators.pattern('.*'),
   ]);

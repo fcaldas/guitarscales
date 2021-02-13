@@ -40,11 +40,52 @@ export class ChordsInScaleComponent implements OnInit {
     let idx = 0;
     for (const note of (this.selected_notes || [])) {
       if (idx !== 7) {
+        if(this.voicing == "triad"){
           triads.push(this.get_triad(idx, note));
+        }else if(this.voicing == "tetrad"){
+          triads.push(this.get_tetrad(idx, note));
+        }
       }
       idx += 1;
     }
     return triads;
+  }
+
+  get_tetrad(degree: number, note: Note): Tetrad {
+    const tetrad = [note];
+    let sec_degree = degree + 2;
+    let third_degree = degree + 4;
+    let fourth_degree = degree + 6;
+    if (sec_degree < this.selected_notes.length) {
+      tetrad.push(this.selected_notes[sec_degree]);
+    } else {
+      sec_degree -= this.selected_notes.length - 1;
+      tetrad.push(new Note(
+        this.selected_notes[sec_degree].note,
+        this.selected_notes[sec_degree].degree + 1)
+      );
+    }
+
+    if (third_degree < this.selected_notes.length) {
+      tetrad.push(this.selected_notes[third_degree]);
+    } else {
+      third_degree -= this.selected_notes.length - 1;
+      tetrad.push(new Note(
+        this.selected_notes[third_degree].note,
+        this.selected_notes[third_degree].degree + 1)
+      );
+    }
+
+    if (fourth_degree < this.selected_notes.length) {
+      tetrad.push(this.selected_notes[fourth_degree]);
+    } else {
+      fourth_degree -= this.selected_notes.length - 1;
+      tetrad.push(new Note(
+        this.selected_notes[fourth_degree].note,
+        this.selected_notes[fourth_degree].degree + 1)
+      );
+    }
+    return new Tetrad(tetrad);
   }
 
 
