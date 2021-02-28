@@ -15,3 +15,12 @@ h3{
     display: inline;
     font-family: cursive;
 }
+
+.rightdiv{
+    float:left;
+    margin-left: 2em;
+}
+
+.leftdiv{
+    float:left;
+}

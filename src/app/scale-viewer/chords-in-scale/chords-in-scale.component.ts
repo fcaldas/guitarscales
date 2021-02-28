@@ -15,7 +15,6 @@ export class ChordsInScaleComponent implements OnInit {
   @Input()
   selected_notes: Note[];
   @Input()
-  voicing: string;
 
   synth: Tone.PolySynth;
 
@@ -35,14 +34,14 @@ export class ChordsInScaleComponent implements OnInit {
   }
 
 
-  getChords(): Chord[] {
+  getChords(voicing: "triad" | "tetrad"): Chord[] {
     const triads = [];
     let idx = 0;
     for (const note of (this.selected_notes || [])) {
       if (idx !== 7) {
-        if(this.voicing == "triad"){
+        if(voicing == "triad"){
           triads.push(this.get_triad(idx, note));
-        }else if(this.voicing == "tetrad"){
+        }else if(voicing == "tetrad"){
           triads.push(this.get_tetrad(idx, note));
         }
       }
