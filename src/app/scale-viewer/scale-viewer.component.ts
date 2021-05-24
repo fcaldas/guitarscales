@@ -1,10 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { isString } from 'util';
-import { NoteName, Note, getNote } from '../classes/music/note';
+import { NoteName, Note, getNote, Chord } from '../classes/music/note';
 import { Scale, ScaleTypes} from '../classes/music/scale';
 import {FormControl, FormGroupDirective, NgForm, Validators} from '@angular/forms';
 import {ErrorStateMatcher} from '@angular/material/core';
 import * as Tone from 'tone';
+import { not } from '@angular/compiler/src/output/output_ast';
 
 @Component({
   selector: 'app-scale-viewer',
@@ -16,7 +17,10 @@ export class ScaleViewerComponent implements OnInit {
   notes: Array<string>;
   synth: Tone.PolySynth;
   scale_names: string[];
-  notes_display: Note[];
+  notes_display: Set<NoteName>;
+  highlightedNotes: Set<NoteName>;
+  rootNote: NoteName;
+  currentScale: Scale;
 
   constructor() {
     this.notes = Object.keys(NoteName).map(key => NoteName[key]).filter(x => isString(x));
@@ -59,14 +63,28 @@ export class ScaleViewerComponent implements OnInit {
   changeSelection() {
     if (this.selected.value && this.selected_scale.value) {
       const root = getNote(this.selected.value);
+      this.rootNote = root.note;
       const scale = new Scale(root, ScaleTypes[this.selected_scale.value]);
-      this.notes_display = scale.getNotesInScale();
+      this.notes_display = new Set<NoteName>();
+      for(let n of scale.getNotesInScale()) {
+        this.notes_display.add(n.note);
+      }
+      this.currentScale = scale;
     }
   }
 
   ngOnInit() {
     this.selected.valueChanges.subscribe((selectedValue) => this.changeSelection());
     this.selected_scale.valueChanges.subscribe((selectedValue) => this.changeSelection());
+  }
+
+  highlight(chord: Chord) {
+    // highlight notes in chord
+    let noteSet: Set<NoteName> = new Set<NoteName>();
+    for(let k of chord.notes) {
+      noteSet.add(k.note);
+    }
+    this.highlightedNotes = noteSet;
   }
 
 }

@@ -1,7 +1,8 @@
-import { Component, OnInit, Input } from '@angular/core';
-import { Note, NoteName, Chord, Interval} from './../../classes/music/note';
-import { Triad } from '../../classes/music/triad.ts';
-import { Tetrad } from '../../classes/music/tetrads.ts';
+import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+import { Note, NoteName, Chord, Interval } from './../../classes/music/note';
+import { Scale } from './../../classes/music/scale';
+import { Triad } from '../../classes/music/triad';
+import { Tetrad } from '../../classes/music/tetrads';
 
 import * as Tone from 'tone';
 
@@ -13,12 +14,15 @@ import * as Tone from 'tone';
 export class ChordsInScaleComponent implements OnInit {
 
   @Input()
-  selected_notes: Note[];
+  selectedScale: Scale;
   @Input()
-
   synth: Tone.PolySynth;
+  @Output()
+  highlightChord: EventEmitter<Chord>;
 
-  constructor() { }
+  constructor() {
+    this.highlightChord = new EventEmitter<Chord>();
+  }
 
   ngOnInit() {
     this.synth = new Tone.PolySynth(
@@ -35,13 +39,15 @@ export class ChordsInScaleComponent implements OnInit {
 
 
   getChords(voicing: "triad" | "tetrad"): Chord[] {
+    if(this.selectedScale == null)
+      return [];
     const triads = [];
     let idx = 0;
-    for (const note of (this.selected_notes || [])) {
+    for (const note of this.selectedScale.getNotesInScale()) {
       if (idx !== 7) {
-        if(voicing == "triad"){
+        if (voicing == "triad") {
           triads.push(this.get_triad(idx, note));
-        }else if(voicing == "tetrad"){
+        } else if (voicing == "tetrad") {
           triads.push(this.get_tetrad(idx, note));
         }
       }
@@ -55,78 +61,76 @@ export class ChordsInScaleComponent implements OnInit {
     let sec_degree = degree + 2;
     let third_degree = degree + 4;
     let fourth_degree = degree + 6;
-    if (sec_degree < this.selected_notes.length) {
-      tetrad.push(this.selected_notes[sec_degree]);
+    let notes: Note[] = this.selectedScale.getNotesInScale();
+    if (sec_degree < notes.length) {
+      tetrad.push(notes[sec_degree]);
     } else {
-      sec_degree -= this.selected_notes.length - 1;
+      sec_degree -= notes.length - 1;
       tetrad.push(new Note(
-        this.selected_notes[sec_degree].note,
-        this.selected_notes[sec_degree].degree + 1)
+        notes[sec_degree].note,
+        notes[sec_degree].degree + 1)
       );
     }
 
-    if (third_degree < this.selected_notes.length) {
-      tetrad.push(this.selected_notes[third_degree]);
+    if (third_degree < notes.length) {
+      tetrad.push(notes[third_degree]);
     } else {
-      third_degree -= this.selected_notes.length - 1;
+      third_degree -= notes.length - 1;
       tetrad.push(new Note(
-        this.selected_notes[third_degree].note,
-        this.selected_notes[third_degree].degree + 1)
+        notes[third_degree].note,
+        notes[third_degree].degree + 1)
       );
     }
 
-    if (fourth_degree < this.selected_notes.length) {
-      tetrad.push(this.selected_notes[fourth_degree]);
+    if (fourth_degree < notes.length) {
+      tetrad.push(notes[fourth_degree]);
     } else {
-      fourth_degree -= this.selected_notes.length - 1;
+      fourth_degree -= notes.length - 1;
       tetrad.push(new Note(
-        this.selected_notes[fourth_degree].note,
-        this.selected_notes[fourth_degree].degree + 1)
+        notes[fourth_degree].note,
+        notes[fourth_degree].degree + 1)
       );
     }
     return new Tetrad(tetrad);
   }
 
-
   get_triad(degree: number, note: Note): Triad {
     const triad = [note];
     let sec_degree = degree + 2;
     let third_degree = degree + 4;
-    if (sec_degree < this.selected_notes.length) {
-      triad.push(this.selected_notes[sec_degree]);
+    let notes: Note[] = this.selectedScale.getNotesInScale();
+    if (sec_degree < notes.length) {
+      triad.push(notes[sec_degree]);
     } else {
-      sec_degree -= this.selected_notes.length - 1;
+      sec_degree -= notes.length - 1;
       triad.push(new Note(
-        this.selected_notes[sec_degree].note,
-        this.selected_notes[sec_degree].degree + 1)
+        notes[sec_degree].note,
+        notes[sec_degree].degree + 1)
       );
     }
 
-    if (third_degree < this.selected_notes.length) {
-      triad.push(this.selected_notes[third_degree]);
+    if (third_degree < notes.length) {
+      triad.push(notes[third_degree]);
     } else {
-      third_degree -= this.selected_notes.length - 1;
+      third_degree -= notes.length - 1;
       triad.push(new Note(
-        this.selected_notes[third_degree].note,
-        this.selected_notes[third_degree].degree + 1)
+        notes[third_degree].note,
+        notes[third_degree].degree + 1)
       );
     }
     return new Triad(triad);
   }
 
   playChord(chord: Chord) {
+    this.highlightChord.emit(chord);
     console.log("Playing..");
     console.log(chord);
     const now = Tone.now();
     let k = 0;
     for (const n of chord.notes) {
-      this.synth.triggerAttackRelease(n.toString(), '8n', now + .1 * k);
+      this.synth.triggerAttackRelease(n.toString(), '8n', now + (.1 * k));
       k += 1;
-      this.synth.triggerAttackRelease(n.toString(), '8n', now + 1);
     }
   }
 
-  playChorda() {
-    console.log("Chorda");
-  }
 }

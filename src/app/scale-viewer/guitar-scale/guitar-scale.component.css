@@ -36,6 +36,10 @@
     border-radius: 50%;
 }
 
+.highlightedNote{
+    fill:yellowgreen;
+}
+
 .invisibleMarker{
     visibility: hidden;
     display: none;

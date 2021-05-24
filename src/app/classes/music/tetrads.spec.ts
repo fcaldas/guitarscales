@@ -1,4 +1,4 @@
-import { Tetrad } from './tetrads.ts';
+import { Tetrad } from './tetrads';
 
 describe('Tetrads.Ts', () => {
   it('should create an instance', () => {

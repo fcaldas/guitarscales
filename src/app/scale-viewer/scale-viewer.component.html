@@ -26,6 +26,6 @@
 
 </div>
 
-<app-guitar-scale [selected_notes]="notes_display"></app-guitar-scale>
+<app-guitar-scale [selected_notes]="notes_display" [currentScale]="currentScale" [rootNote]="rootNote" [highlightNotes]="highlightedNotes"></app-guitar-scale>
 
-<app-chords-in-scale [selected_notes]="notes_display"></app-chords-in-scale>
+<app-chords-in-scale [selectedScale]="currentScale" (highlightChord)="highlight($event)"></app-chords-in-scale>

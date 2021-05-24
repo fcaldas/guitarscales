@@ -50,7 +50,6 @@ export class Tetrad implements Chord {
         }
         let int_notation = [0, semitones_to_third, semitones_to_fifth, semitones_to_seventh];
         for(let k in naming_map) {
-            console.log(k);
             if(naming_map[k].toString() === int_notation.toString())
                 return chordName + k;
         }

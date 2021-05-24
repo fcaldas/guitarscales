@@ -1,4 +1,4 @@
-import { Triad } from './triad.ts';
+import { Triad } from './triad';
 import { Note, NoteName } from './note';
 
 
