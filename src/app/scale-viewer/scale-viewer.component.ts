@@ -70,6 +70,8 @@ export class ScaleViewerComponent implements OnInit {
         this.notes_display.add(n.note);
       }
       this.currentScale = scale;
+      if (this.highlightedNotes != null)
+        this.highlightedNotes.clear();
     }
   }
 

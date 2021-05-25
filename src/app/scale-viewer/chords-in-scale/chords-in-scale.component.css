@@ -9,11 +9,17 @@ h3{
 
 .minBtn{
     line-height: 20px;
+    font-family: "Pattaya";
+    border-radius: 10px;
 }
 
 .triadDescription{
     display: inline;
-    font-family: cursive;
+    font-family: "Roboto-regular";
+}
+
+.chordDisplay{
+    font-family: "Pattaya";
 }
 
 .rightdiv{
@@ -23,4 +29,8 @@ h3{
 
 .leftdiv{
     float:left;
+}
+
+.chordType{
+    font-family: "Pattaya";
 }

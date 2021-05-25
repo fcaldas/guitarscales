@@ -3,7 +3,7 @@
     <h3 *ngIf="selected_notes">Triads in scale</h3>
     <div *ngFor="let chord of getChords('triad')">
       <button (click)="playChord(chord)" class="minBtn" color="primary">Play</button>
-      &nbsp;<p class="triadDescription">{{chord.notes}} - {{chord.getName()}}</p>
+      &nbsp;<p class="triadDescription">{{chord.notes}} - <b class="chordDisplay">{{chord.getName()}}</b></p>
     <br>
     </div>
   </div>
@@ -11,7 +11,7 @@
     <h3 *ngIf="selected_notes">Tetrads in scale</h3>
     <div *ngFor="let chord of getChords('tetrad')">
       <button (click)="playChord(chord)" class="minBtn" color="primary">Play</button>
-      &nbsp;<p class="triadDescription">{{chord.notes}} - {{chord.getName()}}</p>
+      &nbsp;<p class="triadDescription">{{chord.notes}} - <b class="chordDisplay">{{chord.getName()}}</b></p>
     <br>
     </div>
   </div>
