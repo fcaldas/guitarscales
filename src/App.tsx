@@ -20,6 +20,7 @@ const FRETS = Array.from({ length: 13 }, (_, i) => i);
 
 type ScaleNote = { pitchClass: string; name: string };
 type Chord = { name: string; notes: ScaleNote[] };
+type SelectedPosition = { id: string; pitchClass: string };
 const noteAt = (note: string, semitones: number) => NOTES[(NOTES.indexOf(note) + semitones) % 12];
 const pitch = (note: string, octave: number) => 440 * 2 ** ((NOTES.indexOf(note) - 9 + (octave - 4) * 12) / 12);
 
@@ -92,30 +93,37 @@ const CHORD_PATTERNS: Array<[number[], string]> = [
 
 function nameSelectedChord(selected: string[]) {
   if (selected.length < 2) return { primary: 'Select at least two notes', alternatives: [] as string[] };
-  const candidates = selected.flatMap(root => {
+  const exactCandidates = selected.flatMap(root => {
     const intervals = selected.map(note => (NOTES.indexOf(note) - NOTES.indexOf(root) + 12) % 12).sort((a, b) => a - b);
     const suffix = CHORD_PATTERNS.find(([pattern]) => pattern.length === intervals.length && pattern.every((value, index) => value === intervals[index]))?.[1];
     return suffix === undefined ? [] : [`${root}${suffix}`];
   });
-  return candidates.length ? { primary: candidates[0], alternatives: candidates.slice(1) } : { primary: 'No common chord match', alternatives: [] as string[] };
+  if (exactCandidates.length) return { primary: exactCandidates[0], alternatives: exactCandidates.slice(1) };
+  const omittedFifthCandidates = selected.flatMap(root => {
+    const intervals = selected.map(note => (NOTES.indexOf(note) - NOTES.indexOf(root) + 12) % 12).sort((a, b) => a - b);
+    const suffix = CHORD_PATTERNS.find(([pattern]) => pattern.includes(7) && pattern.length === intervals.length + 1 && intervals.every(value => pattern.includes(value)) && pattern.filter(value => !intervals.includes(value)).join(',') === '7')?.[1];
+    return suffix === undefined ? [] : [`${root}${suffix}(no5)`];
+  });
+  return omittedFifthCandidates.length ? { primary: omittedFifthCandidates[0], alternatives: omittedFifthCandidates.slice(1) } : { primary: 'No common chord match', alternatives: [] as string[] };
 }
 
 function ChordNamer() {
-  const [selected, setSelected] = useState<string[]>([]);
-  const result = useMemo(() => nameSelectedChord(selected), [selected]);
-  const toggle = (note: string) => setSelected(current => current.includes(note) ? current.filter(value => value !== note) : [...current, note]);
-  const selectedSet = new Set(selected);
-  const playable = selected.map(pitchClass => ({ pitchClass, name: pitchClass }));
+  const [selected, setSelected] = useState<SelectedPosition[]>([]);
+  const selectedPitchClasses = [...new Set(selected.map(position => position.pitchClass))];
+  const result = useMemo(() => nameSelectedChord(selectedPitchClasses), [selectedPitchClasses]);
+  const toggle = (id: string, pitchClass: string) => setSelected(current => current.some(position => position.id === id) ? current.filter(position => position.id !== id) : [...current, { id, pitchClass }]);
+  const selectedIds = new Set(selected.map(position => position.id));
+  const playable = selected.map(position => ({ pitchClass: position.pitchClass, name: position.pitchClass }));
   return <main><h1>Chord Namer</h1><p className="intro">Click the notes you are playing. The name updates instantly in your browser.</p>
-    <div className="namer-result" aria-live="polite"><span>{selected.length ? `Notes: ${selected.join(', ')}` : 'No notes selected'}</span><strong>{result.primary}</strong>{result.alternatives.length > 0 && <small>Also: {result.alternatives.join(' / ')}</small>}</div>
+    <div className="namer-result" aria-live="polite"><span>{selected.length ? `Notes: ${selected.map(position => position.pitchClass).join(', ')}` : 'No notes selected'}</span><strong>{result.primary}</strong>{result.alternatives.length > 0 && <small>Also: {result.alternatives.join(' / ')}</small>}</div>
     <div className="fretboard-wrap interactive"><svg viewBox="0 0 1200 205" role="img" aria-label="Interactive guitar fretboard">
       <rect className="neck" x="0" y="0" width="1200" height="184" rx="3" />
       {FRETS.map(fret => <line className="fret" key={fret} x1={fret * 100} x2={fret * 100} y1="0" y2="184" />)}
       {STRING_Y.map((y, i) => <line className="string" key={i} x1="0" x2="1200" y1={y} y2={y} />)}
       {[5, 7, 9].map(fret => <text className="fret-label" key={fret} x={fret * 100 - 8} y="202">{fret}</text>)}
       {OPEN_STRINGS.flatMap((open, stringIndex) => FRETS.map(fret => {
-        const note = noteAt(open, fret); const x = fret === 0 ? 12 : fret * 100 - 35; const active = selectedSet.has(note);
-        return <g className="namer-note" role="button" tabIndex={0} aria-label={`${active ? 'Remove' : 'Add'} ${note}`} key={`${stringIndex}-${fret}`} onClick={() => toggle(note)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(note); } }}><circle className={`marker ${active ? 'active' : 'muted'}`} cx={x} cy={STRING_Y[stringIndex]} r="16" /><text className={`note ${active ? 'active' : 'muted'}`} x={x} y={STRING_Y[stringIndex] + 5}>{note}</text></g>;
+        const note = noteAt(open, fret); const id = `${stringIndex}-${fret}`; const x = fret === 0 ? 12 : fret * 100 - 35; const active = selectedIds.has(id);
+        return <g className="namer-note" role="button" tabIndex={0} aria-label={`${active ? 'Remove' : 'Add'} ${note}`} key={id} onClick={() => toggle(id, note)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(id, note); } }}><circle className={`marker ${active ? 'active' : 'muted'}`} cx={x} cy={STRING_Y[stringIndex]} r="16" /><text className={`note ${active ? 'active' : 'muted'}`} x={x} y={STRING_Y[stringIndex] + 5}>{note}</text></g>;
       }))}
     </svg></div>
     <div className="namer-actions"><button className="clear" onClick={() => setSelected([])}>Clear notes</button>{selected.length > 1 && <button className="play-selected" onClick={() => play(playable, 0)}>Play selection</button>}</div>
