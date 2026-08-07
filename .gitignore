@@ -9,6 +9,10 @@
 
 # dependencies
 /node_modules
+.pnpm-store/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
 # profiling files
 chrome-profiler-events*.json
