@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import * as Tone from 'tone';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -54,15 +55,55 @@ function makeChords(scale: ScaleNote[], size: number = 3): Chord[] {
   });
 }
 
-function play(notes: ScaleNote[], stagger = 0.1) {
-  const context = new AudioContext();
-  notes.forEach((note, index) => {
-    const oscillator = context.createOscillator(); const gain = context.createGain();
-    const start = context.currentTime + index * stagger;
-    oscillator.type = 'sine'; oscillator.frequency.value = pitch(note.pitchClass, 4 + (index > 1 ? 1 : 0));
-    gain.gain.setValueAtTime(0.0001, start); gain.gain.exponentialRampToValueAtTime(0.18, start + 0.02); gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
-    oscillator.connect(gain).connect(context.destination); oscillator.start(start); oscillator.stop(start + 0.45);
-  });
+const toToneNote = (note: ScaleNote, index: number) => `${note.pitchClass}${4 + (index > 2 ? 1 : 0)}`;
+
+function useToneEngine() {
+  const synth = useRef<Tone.PolySynth | null>(null);
+  const sequence = useRef<Tone.Part | null>(null);
+
+  const start = async () => {
+    await Tone.start();
+    if (!synth.current) {
+      synth.current = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.015, decay: 0.12, sustain: 0.35, release: 1.1 },
+      }).toDestination();
+      synth.current.volume.value = -8;
+    }
+    return synth.current;
+  };
+
+  const stop = () => {
+    sequence.current?.dispose();
+    sequence.current = null;
+    const transport = Tone.getTransport();
+    transport.stop();
+    transport.cancel();
+    transport.position = 0;
+  };
+
+  const playChord = async (notes: ScaleNote[]) => {
+    const instrument = await start();
+    instrument.triggerAttackRelease(notes.map(toToneNote), '2n', Tone.now());
+  };
+
+  const playLoop = async (chords: Chord[], bpm: number) => {
+    const instrument = await start();
+    stop();
+    const transport = Tone.getTransport();
+    transport.bpm.value = bpm;
+    transport.loop = true;
+    transport.loopStart = 0;
+    transport.loopEnd = `${chords.length}m`;
+    sequence.current = new Tone.Part<{ time: string; chord: Chord }>((time, event) => {
+      instrument.triggerAttackRelease(event.chord.notes.map(toToneNote), '2n', time);
+    }, chords.map((chord, index) => ({ time: `${index}m`, chord })));
+    sequence.current.start(0);
+    transport.start('+0.05');
+  };
+
+  useEffect(() => () => { stop(); synth.current?.dispose(); }, []);
+  return { playChord, playLoop, stop };
 }
 
 function Fretboard({ scale, root, highlighted }: { scale: ScaleNote[]; root: string; highlighted: ScaleNote[] | null }) {
@@ -81,8 +122,8 @@ function Fretboard({ scale, root, highlighted }: { scale: ScaleNote[]; root: str
   </svg></div>;
 }
 
-function ChordColumn({ title, chords, onPlay }: { title: string; chords: Chord[]; onPlay: (chord: Chord) => void }) {
-  return <section className="chord-column"><h2>{title}</h2>{chords.map(chord => <div className="chord" key={chord.name}><button onClick={() => onPlay(chord)} aria-label={`Play ${chord.name}`}>Play</button><span>{chord.notes.map(note => note.name).join(', ')} – <strong>{chord.name}</strong></span></div>)}</section>;
+function ChordColumn({ title, chords, onPlay, onAdd }: { title: string; chords: Chord[]; onPlay: (chord: Chord) => void; onAdd?: (chord: Chord) => void }) {
+  return <section className="chord-column"><h2>{title}</h2>{chords.map(chord => <div className="chord" key={chord.name}><button onClick={() => onPlay(chord)} aria-label={`Play ${chord.name}`}>Play</button>{onAdd && <button className="add-chord" onClick={() => onAdd(chord)} aria-label={`Add ${chord.name} to sequencer`}>+</button>}<span>{chord.notes.map(note => note.name).join(', ')} – <strong>{chord.name}</strong></span></div>)}</section>;
 }
 
 const CHORD_PATTERNS: Array<[number[], string]> = [
@@ -107,7 +148,7 @@ function nameSelectedChord(selected: string[]) {
   return omittedFifthCandidates.length ? { primary: omittedFifthCandidates[0], alternatives: omittedFifthCandidates.slice(1) } : { primary: 'No common chord match', alternatives: [] as string[] };
 }
 
-function ChordNamer() {
+function ChordNamer({ onPlay }: { onPlay: (notes: ScaleNote[]) => void }) {
   const [selected, setSelected] = useState<SelectedPosition[]>([]);
   const selectedPitchClasses = [...new Set(selected.map(position => position.pitchClass))];
   const result = useMemo(() => nameSelectedChord(selectedPitchClasses), [selectedPitchClasses]);
@@ -126,20 +167,50 @@ function ChordNamer() {
         return <g className="namer-note" role="button" tabIndex={0} aria-label={`${active ? 'Remove' : 'Add'} ${note}`} key={id} onClick={() => toggle(id, note)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(id, note); } }}><circle className={`marker ${active ? 'active' : 'muted'}`} cx={x} cy={STRING_Y[stringIndex]} r="16" /><text className={`note ${active ? 'active' : 'muted'}`} x={x} y={STRING_Y[stringIndex] + 5}>{note}</text></g>;
       }))}
     </svg></div>
-    <div className="namer-actions"><button className="clear" onClick={() => setSelected([])}>Clear notes</button>{selected.length > 1 && <button className="play-selected" onClick={() => play(playable, 0)}>Play selection</button>}</div>
+    <div className="namer-actions"><button className="clear" onClick={() => setSelected([])}>Clear notes</button>{selected.length > 1 && <button className="play-selected" onClick={() => onPlay(playable)}>Play selection</button>}</div>
   </main>;
+}
+
+const PROGRESSIONS = [
+  { label: 'I – V – vi – IV', degrees: [0, 4, 5, 3], description: 'The classic pop progression' },
+  { label: 'I – IV – V', degrees: [0, 3, 4], description: 'A foundational major-key cadence' },
+  { label: 'ii – V – I', degrees: [1, 4, 0], description: 'The essential jazz turnaround' },
+  { label: 'vi – IV – I – V', degrees: [5, 3, 0, 4], description: 'A modern pop loop' },
+  { label: 'I – vi – IV – V', degrees: [0, 5, 3, 4], description: 'The 1950s progression' },
+  { label: 'i – VI – III – VII', degrees: [0, 5, 2, 6], description: 'A strong minor/modal loop' },
+];
+
+function Progressions({ chords, onLoad }: { chords: Chord[]; onLoad: (chords: Chord[]) => void }) {
+  if (chords.length !== 7) return <section className="progressions"><h2>Common progressions</h2><p>Choose a seven-note scale to explore diatonic chord progressions.</p></section>;
+  return <section className="progressions"><h2>Common progressions</h2><div className="progression-grid">{PROGRESSIONS.map(progression => {
+    const sequence = progression.degrees.map(degree => chords[degree]);
+    return <button className="progression" key={progression.label} onClick={() => onLoad(sequence)}><strong>{progression.label}</strong><span>{sequence.map(chord => chord.name).join('  ·  ')}</span><small>{progression.description} — load into sequencer</small></button>;
+  })}</div></section>;
+}
+
+function Sequencer({ chords, bpm, isLooping, onTempo, onPlay, onStop, onRemove, onClear }: { chords: Chord[]; bpm: number; isLooping: boolean; onTempo: (bpm: number) => void; onPlay: () => void; onStop: () => void; onRemove: (index: number) => void; onClear: () => void }) {
+  return <section className="sequencer"><div className="sequencer-heading"><div><h2>Chord sequencer</h2><p>Build a progression from the triads above, then loop it.</p></div><label>Tempo <output>{bpm} BPM</output><input type="range" min="60" max="180" value={bpm} onChange={event => onTempo(Number(event.target.value))} /></label></div>
+    <div className="sequence-steps">{chords.length ? chords.map((chord, index) => <button className="sequence-step" key={`${chord.name}-${index}`} onClick={() => onRemove(index)} title="Remove chord"><span>{index + 1}</span><strong>{chord.name}</strong></button>) : <p className="sequence-empty">Use a common progression or the + buttons beside triads.</p>}</div>
+    <div className="sequencer-actions"><button className="play-selected" disabled={!chords.length} onClick={onPlay}>{isLooping ? 'Restart loop' : 'Play loop'}</button><button className="clear" disabled={!isLooping} onClick={onStop}>Stop</button><button className="clear" disabled={!chords.length} onClick={onClear}>Clear</button></div>
+  </section>;
 }
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'scales' | 'namer'>('scales');
   const [root, setRoot] = useState('C'); const [scaleName, setScaleName] = useState('Major (Ionian)'); const [highlighted, setHighlighted] = useState<ScaleNote[] | null>(null);
+  const [sequence, setSequence] = useState<Chord[]>([]); const [bpm, setBpm] = useState(96); const [isLooping, setIsLooping] = useState(false);
+  const engine = useToneEngine();
   const notes = useMemo(() => scaleNotes(root, SCALES[scaleName]), [root, scaleName]);
   const triads = useMemo(() => makeChords(notes), [notes]); const tetrads = useMemo(() => makeChords(notes, 4), [notes]);
-  const change = (nextRoot: string, nextScale: string) => { setRoot(nextRoot); setScaleName(nextScale); setHighlighted(null); };
-  const playChord = (chord: Chord) => { setHighlighted(chord.notes); play(chord.notes); };
+  const stopLoop = () => { engine.stop(); setIsLooping(false); };
+  const change = (nextRoot: string, nextScale: string) => { stopLoop(); setRoot(nextRoot); setScaleName(nextScale); setHighlighted(null); setSequence([]); };
+  const playChord = (chord: Chord) => { setHighlighted(chord.notes); void engine.playChord(chord.notes); };
+  const startLoop = () => { if (sequence.length) { void engine.playLoop(sequence, bpm); setIsLooping(true); } };
   return <><header><a className="brand" href="/guitarscales/">Music Tools</a><nav><button className={`tab ${activeTab === 'scales' ? 'current' : ''}`} onClick={() => setActiveTab('scales')}>Scales</button><button className={`tab ${activeTab === 'namer' ? 'current' : ''}`} onClick={() => setActiveTab('namer')}>Chord Namer</button><a className="nav-item" href="https://github.com/fcaldas" target="_blank" rel="noreferrer">GitHub</a></nav></header>
-    {activeTab === 'namer' ? <ChordNamer /> : <main><h1>Guitar Scale Explorer</h1><div className="controls"><label>Root note<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Select a scale<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => play(notes.slice(0, -1), 0.5)} aria-label="Play scale">▶</button></div>
+    {activeTab === 'namer' ? <ChordNamer onPlay={notes => void engine.playChord(notes)} /> : <main><h1>Guitar Scale Explorer</h1><div className="controls"><label>Root note<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Select a scale<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => void engine.playChord(notes.slice(0, -1))} aria-label="Play scale">▶</button></div>
       <Fretboard scale={notes} root={root} highlighted={highlighted} />
-      <div className="chords"><ChordColumn title="Triads in scale" chords={triads} onPlay={playChord} /><ChordColumn title="Tetrads in scale" chords={tetrads} onPlay={playChord} /></div>
+      <div className="chords"><ChordColumn title="Triads in scale" chords={triads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /><ChordColumn title="Tetrads in scale" chords={tetrads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /></div>
+      <Progressions chords={triads} onLoad={chords => { stopLoop(); setSequence(chords); }} />
+      <Sequencer chords={sequence} bpm={bpm} isLooping={isLooping} onTempo={setBpm} onPlay={startLoop} onStop={stopLoop} onRemove={index => setSequence(current => current.filter((_, chordIndex) => chordIndex !== index))} onClear={() => { stopLoop(); setSequence([]); }} />
     </main>}</>;
 }
