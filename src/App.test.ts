@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commonFingering, DIAGRAM_STRINGS, noteAt, voiceLead } from './App';
+import { commonFingering, DIAGRAM_STRINGS, nameSelectedChord, noteAt, voiceLead } from './App';
 
 const note = (pitchClass: string) => ({ pitchClass, name: pitchClass });
 
@@ -40,5 +40,15 @@ describe('voice leading', () => {
     const full = voiceLead(chord)[0];
 
     expect(full).toHaveLength(4);
+  });
+});
+
+describe('jazz chord naming', () => {
+  it('identifies inversions from the detected bass note', () => {
+    expect(nameSelectedChord(['C', 'E', 'G', 'B'], 'E').primary).toBe('Cmaj7/E');
+  });
+
+  it('recognizes altered dominant extensions', () => {
+    expect(nameSelectedChord(['G', 'G#', 'B', 'D', 'F']).primary).toBe('G7♭9');
   });
 });

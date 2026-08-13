@@ -23,7 +23,7 @@ const FRETS = Array.from({ length: 13 }, (_, i) => i);
 
 type ScaleNote = { pitchClass: string; name: string };
 type Chord = { name: string; notes: ScaleNote[]; function?: string };
-type SelectedPosition = { id: string; pitchClass: string };
+type SelectedPosition = { id: string; pitchClass: string; midi: number };
 export const noteAt = (note: string, semitones: number) => NOTES[(NOTES.indexOf(note) + semitones) % 12];
 const pitch = (note: string, octave: number) => 440 * 2 ** ((NOTES.indexOf(note) - 9 + (octave - 4) * 12) / 12);
 
@@ -206,45 +206,62 @@ function ChordColumn({ title, chords, onPlay, onAdd }: { title: string; chords: 
 const CHORD_PATTERNS: Array<[number[], string]> = [
   [[0, 7], '5'], [[0, 5, 7], 'sus4'], [[0, 2, 7], 'sus2'], [[0, 3, 6], 'dim'], [[0, 3, 7], 'm'], [[0, 4, 7], ''], [[0, 4, 8], 'aug'],
   [[0, 3, 6, 9], 'dim7'], [[0, 3, 6, 10], 'm7♭5'], [[0, 3, 7, 10], 'm7'], [[0, 3, 7, 11], 'm(maj7)'], [[0, 4, 7, 10], '7'], [[0, 4, 7, 11], 'maj7'], [[0, 4, 8, 10], 'aug7'], [[0, 4, 8, 11], 'maj7#5'],
-  [[0, 3, 7, 9], 'm6'], [[0, 4, 7, 9], '6'], [[0, 2, 4, 7], 'add9'], [[0, 2, 4, 7, 10], '9'], [[0, 2, 4, 7, 11], 'maj9'], [[0, 2, 3, 7, 10], 'm9'], [[0, 4, 5, 7, 10], '11'], [[0, 2, 4, 5, 7, 10], '13'],
+  [[0, 3, 7, 9], 'm6'], [[0, 4, 7, 9], '6'], [[0, 2, 4, 7], 'add9'], [[0, 2, 4, 7, 10], '9'], [[0, 2, 4, 7, 11], 'maj9'], [[0, 2, 3, 7, 10], 'm9'], [[0, 3, 5, 7, 10], 'm11'], [[0, 4, 5, 7, 10], '11'], [[0, 2, 4, 5, 7, 10], '13'],
+  [[0, 1, 4, 7, 10], '7♭9'], [[0, 3, 4, 7, 10], '7♯9'], [[0, 4, 6, 7, 10], '7♯11'], [[0, 4, 7, 8, 10], '7♭13'], [[0, 4, 6, 7, 11], 'maj7♯11'],
 ];
 
-function nameSelectedChord(selected: string[]) {
-  if (selected.length < 2) return { primary: 'Select at least two notes', alternatives: [] as string[] };
+type ChordMatch = { primary: string; root?: string; suffix?: string; alternatives: string[] };
+export function nameSelectedChord(selected: string[], bass?: string): ChordMatch {
+  if (selected.length < 2) return { primary: 'Select at least two notes', alternatives: [] };
   const exactCandidates = selected.flatMap(root => {
     const intervals = selected.map(note => (NOTES.indexOf(note) - NOTES.indexOf(root) + 12) % 12).sort((a, b) => a - b);
     const suffix = CHORD_PATTERNS.find(([pattern]) => pattern.length === intervals.length && pattern.every((value, index) => value === intervals[index]))?.[1];
-    return suffix === undefined ? [] : [`${root}${suffix}`];
+    return suffix === undefined ? [] : [{ root, suffix }];
   });
-  if (exactCandidates.length) return { primary: exactCandidates[0], alternatives: exactCandidates.slice(1) };
+  if (exactCandidates.length) {
+    const [match, ...alternatives] = exactCandidates;
+    const primary = `${match.root}${match.suffix}${bass && bass !== match.root ? `/${bass}` : ''}`;
+    return { primary, root: match.root, suffix: match.suffix, alternatives: alternatives.map(candidate => `${candidate.root}${candidate.suffix}`) };
+  }
   const omittedFifthCandidates = selected.flatMap(root => {
     const intervals = selected.map(note => (NOTES.indexOf(note) - NOTES.indexOf(root) + 12) % 12).sort((a, b) => a - b);
     const suffix = CHORD_PATTERNS.find(([pattern]) => pattern.includes(7) && pattern.length === intervals.length + 1 && intervals.every(value => pattern.includes(value)) && pattern.filter(value => !intervals.includes(value)).join(',') === '7')?.[1];
-    return suffix === undefined ? [] : [`${root}${suffix}(no5)`];
+    return suffix === undefined ? [] : [{ root, suffix: `${suffix}(no5)` }];
   });
-  return omittedFifthCandidates.length ? { primary: omittedFifthCandidates[0], alternatives: omittedFifthCandidates.slice(1) } : { primary: 'No common chord match', alternatives: [] as string[] };
+  if (omittedFifthCandidates.length) {
+    const [match, ...alternatives] = omittedFifthCandidates;
+    return { primary: `${match.root}${match.suffix}${bass && bass !== match.root ? `/${bass}` : ''}`, root: match.root, suffix: match.suffix, alternatives: alternatives.map(candidate => `${candidate.root}${candidate.suffix}`) };
+  }
+  return { primary: 'No common chord match', alternatives: [] };
 }
 
-function ChordNamer({ onPlay }: { onPlay: (notes: ScaleNote[]) => void }) {
+function chordRole(note: string, root?: string) {
+  if (!root) return 'tone';
+  return ({ 0: 'root', 1: '♭9', 2: '9', 3: '♭3', 4: '3', 5: '11', 6: '♯11', 7: '5', 8: '♭13', 9: '13', 10: '♭7', 11: '7' } as Record<number, string>)[(NOTES.indexOf(note) - NOTES.indexOf(root) + 12) % 12];
+}
+
+function ChordNamer({ onPlay, onAdd }: { onPlay: (notes: ScaleNote[]) => void; onAdd: (chord: Chord) => void }) {
   const [selected, setSelected] = useState<SelectedPosition[]>([]);
   const selectedPitchClasses = [...new Set(selected.map(position => position.pitchClass))];
-  const result = useMemo(() => nameSelectedChord(selectedPitchClasses), [selectedPitchClasses]);
-  const toggle = (id: string, pitchClass: string) => setSelected(current => current.some(position => position.id === id) ? current.filter(position => position.id !== id) : [...current, { id, pitchClass }]);
+  const bass = selected.length ? selected.reduce((lowest, position) => position.midi < lowest.midi ? position : lowest).pitchClass : undefined;
+  const result = useMemo(() => nameSelectedChord(selectedPitchClasses, bass), [selectedPitchClasses, bass]);
+  const toggle = (id: string, pitchClass: string, midi: number) => setSelected(current => current.some(position => position.id === id) ? current.filter(position => position.id !== id) : [...current, { id, pitchClass, midi }]);
   const selectedIds = new Set(selected.map(position => position.id));
   const playable = selected.map(position => ({ pitchClass: position.pitchClass, name: position.pitchClass }));
+  const chordNotes = result.root ? [result.root, ...selectedPitchClasses.filter(note => note !== result.root)].map(pitchClass => ({ pitchClass, name: pitchClass })) : playable;
   return <main><h1>Chord Namer</h1><p className="intro">Click the notes you are playing. The name updates instantly in your browser.</p>
-    <div className="namer-result" aria-live="polite"><span>{selected.length ? `Notes: ${selected.map(position => position.pitchClass).join(', ')}` : 'No notes selected'}</span><strong>{result.primary}</strong>{result.alternatives.length > 0 && <small>Also: {result.alternatives.join(' / ')}</small>}</div>
+    <div className="namer-result" aria-live="polite"><span>{selected.length ? `Played: ${[...selected].sort((a, b) => a.midi - b.midi).map(position => position.pitchClass).join(', ')}` : 'No notes selected'}</span><strong>{result.primary}</strong>{bass && result.root && bass !== result.root && <small>Bass note: {bass} · inversion</small>}{selectedPitchClasses.length > 0 && <div className="tone-roles">{selectedPitchClasses.map(note => <span key={note}><b>{note}</b> {chordRole(note, result.root)}</span>)}</div>}{result.alternatives.length > 0 && <small>Also: {result.alternatives.join(' / ')}</small>}</div>
     <div className="fretboard-wrap interactive"><svg viewBox="0 0 1200 205" role="img" aria-label="Interactive guitar fretboard">
       <rect className="neck" x="0" y="0" width="1200" height="184" rx="3" />
       {FRETS.map(fret => <line className="fret" key={fret} x1={fret * 100} x2={fret * 100} y1="0" y2="184" />)}
       {STRING_Y.map((y, i) => <line className="string" key={i} x1="0" x2="1200" y1={y} y2={y} />)}
       {[5, 7, 9].map(fret => <text className="fret-label" key={fret} x={fret * 100 - 8} y="202">{fret}</text>)}
       {OPEN_STRINGS.flatMap((open, stringIndex) => FRETS.map(fret => {
-        const note = noteAt(open, fret); const id = `${stringIndex}-${fret}`; const x = fret === 0 ? 12 : fret * 100 - 35; const active = selectedIds.has(id);
-        return <g className="namer-note" role="button" tabIndex={0} aria-label={`${active ? 'Remove' : 'Add'} ${note}`} key={id} onClick={() => toggle(id, note)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(id, note); } }}><circle className={`marker ${active ? 'active' : 'muted'}`} cx={x} cy={STRING_Y[stringIndex]} r="16" /><text className={`note ${active ? 'active' : 'muted'}`} x={x} y={STRING_Y[stringIndex] + 5}>{note}</text></g>;
+        const note = noteAt(open, fret); const id = `${stringIndex}-${fret}`; const x = fret === 0 ? 12 : fret * 100 - 35; const active = selectedIds.has(id); const midi = [64, 59, 55, 50, 45, 40][stringIndex] + fret;
+        return <g className="namer-note" role="button" tabIndex={0} aria-label={`${active ? 'Remove' : 'Add'} ${note}`} key={id} onClick={() => toggle(id, note, midi)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(id, note, midi); } }}><circle className={`marker ${active ? 'active' : 'muted'}`} cx={x} cy={STRING_Y[stringIndex]} r="16" /><text className={`note ${active ? 'active' : 'muted'}`} x={x} y={STRING_Y[stringIndex] + 5}>{note}</text></g>;
       }))}
     </svg></div>
-    <div className="namer-actions"><button className="clear" onClick={() => setSelected([])}>Clear notes</button>{selected.length > 1 && <button className="play-selected" onClick={() => onPlay(playable)}>Play selection</button>}</div>
+    <div className="namer-actions"><button className="clear" onClick={() => setSelected([])}>Clear notes</button>{selected.length > 1 && <button className="play-selected" onClick={() => onPlay(playable)}>Play selection</button>}{result.root && <button className="add-named-chord" onClick={() => onAdd({ name: result.primary, notes: chordNotes })}>Add to sequencer</button>}</div>
   </main>;
 }
 
@@ -289,7 +306,7 @@ export default function App() {
   const startLoop = () => { if (sequence.length) { void engine.playLoop(sequence, bpm, rhythm); setIsLooping(true); } };
   const changeRhythm = (nextRhythm: Rhythm) => { setRhythm(nextRhythm); if (isLooping && sequence.length) void engine.playLoop(sequence, bpm, nextRhythm); };
   return <><header><a className="brand" href="/guitarscales/">Music Tools</a><nav><button className={`tab ${activeTab === 'scales' ? 'current' : ''}`} onClick={() => setActiveTab('scales')}>Practice</button><button className={`tab ${activeTab === 'namer' ? 'current' : ''}`} onClick={() => setActiveTab('namer')}>Chord Namer</button><a className="nav-item" href="https://github.com/fcaldas" target="_blank" rel="noreferrer">GitHub</a></nav></header>
-    {activeTab === 'namer' ? <ChordNamer onPlay={notes => void engine.playChord(notes)} /> : <main><section className="hero"><p className="eyebrow">Guitar harmony, in motion</p><h1>Bossa nova &amp; jazz practice lab</h1><p>Explore the neck, hear rich harmony, and build voice-led comping loops.</p></section><div className="controls"><label>Key centre<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Scale colour<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => void engine.playChord(notes.slice(0, -1))} aria-label="Play scale">▶</button></div>
+    {activeTab === 'namer' ? <ChordNamer onPlay={notes => void engine.playChord(notes)} onAdd={chord => setSequence(current => [...current, chord])} /> : <main><section className="hero"><p className="eyebrow">Guitar harmony, in motion</p><h1>Bossa nova &amp; jazz practice lab</h1><p>Explore the neck, hear rich harmony, and build voice-led comping loops.</p></section><div className="controls"><label>Key centre<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Scale colour<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => void engine.playChord(notes.slice(0, -1))} aria-label="Play scale">▶</button></div>
       <Fretboard scale={notes} root={root} highlighted={highlighted} />
       <div className="chords"><ChordColumn title="Triads in scale" chords={triads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /><ChordColumn title="Tetrads in scale" chords={tetrads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /></div>
       <Progressions root={root} onLoad={chords => { stopLoop(); setSequence(chords); }} />
