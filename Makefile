@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install run build deploy
+.PHONY: help install run test build deploy
 
 help: ## Show available commands.
 
@@ -17,6 +17,10 @@ run: ## Start the local development server at http://localhost:5173/guitarscales
 build: ## Create a production build in dist/.
 
 	pnpm build
+
+test: ## Run the automated regression tests.
+
+	pnpm test
 
 deploy: ## Build and publish the site to GitHub Pages.
 

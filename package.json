@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "test": "vitest run",
     "deploy": "pnpm build && gh-pages -d dist"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "@types/react-dom": "latest",
+    "vitest": "^4.1.10"
   }
 }

@@ -16,7 +16,7 @@ const SCALES: Record<string, number[]> = {
   'Harmonic Minor': [2, 1, 2, 2, 1, 3, 1],
 };
 const OPEN_STRINGS = ['E', 'B', 'G', 'D', 'A', 'E'];
-const DIAGRAM_STRINGS = [...OPEN_STRINGS].reverse();
+export const DIAGRAM_STRINGS = [...OPEN_STRINGS].reverse();
 const STRING_Y = [24, 54, 84, 114, 142, 170];
 const FRETS = Array.from({ length: 13 }, (_, i) => i);
 
@@ -25,7 +25,7 @@ type Chord = { name: string; notes: ScaleNote[]; function?: string };
 type Voicing = 'full' | 'shell' | 'rootless';
 type Rhythm = 'straight' | 'bossa';
 type SelectedPosition = { id: string; pitchClass: string };
-const noteAt = (note: string, semitones: number) => NOTES[(NOTES.indexOf(note) + semitones) % 12];
+export const noteAt = (note: string, semitones: number) => NOTES[(NOTES.indexOf(note) + semitones) % 12];
 const pitch = (note: string, octave: number) => 440 * 2 ** ((NOTES.indexOf(note) - 9 + (octave - 4) * 12) / 12);
 
 function accidental(delta: number) {
@@ -64,7 +64,7 @@ function notesForVoicing(chord: Chord, voicing: Voicing) {
   if (voicing === 'rootless') return chord.notes.length > 3 ? chord.notes.slice(1) : chord.notes.slice(1);
   return chord.notes;
 }
-function voiceLead(chords: Chord[], voicing: Voicing) {
+export function voiceLead(chords: Chord[], voicing: Voicing) {
   let previous: number[] = [];
   return chords.map(chord => {
     const pitches = notesForVoicing(chord, voicing).map(note => NOTES.indexOf(note.pitchClass)).sort((a, b) => a - b);
@@ -79,10 +79,10 @@ function voiceLead(chords: Chord[], voicing: Voicing) {
 }
 
 type Fingering = { frets: Array<number | null>; position: number; coveredNotes: number };
-function commonFingering(chord: Chord): Fingering | null {
+export function commonFingering(chord: Chord): Fingering | null {
   const rootFret = (NOTES.indexOf(chord.notes[0].pitchClass) - NOTES.indexOf('A') + 12) % 12;
   const intervals = chord.notes.map(note => (NOTES.indexOf(note.pitchClass) - NOTES.indexOf(chord.notes[0].pitchClass) + 12) % 12).sort((a, b) => a - b).join(',');
-  // Familiar fifth-string-root grips: low E → high E, then reversed for our display.
+  // Familiar fifth-string-root grips, written low E → high E for the diagram.
   const shapes: Record<string, Array<number | null>> = {
     '0,4,7,11': [null, rootFret, rootFret + 2, rootFret + 1, rootFret + 2, rootFret], // maj7
     '0,3,7,10': [null, rootFret, rootFret + 2, rootFret, rootFret + 1, rootFret], // m7
