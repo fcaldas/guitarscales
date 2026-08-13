@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Tone from 'tone';
+import { RhythmNotation, type Rhythm } from './RhythmNotation';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -22,8 +23,6 @@ const FRETS = Array.from({ length: 13 }, (_, i) => i);
 
 type ScaleNote = { pitchClass: string; name: string };
 type Chord = { name: string; notes: ScaleNote[]; function?: string };
-type Voicing = 'full' | 'shell' | 'rootless';
-type Rhythm = 'straight' | 'bossa';
 type SelectedPosition = { id: string; pitchClass: string };
 export const noteAt = (note: string, semitones: number) => NOTES[(NOTES.indexOf(note) + semitones) % 12];
 const pitch = (note: string, octave: number) => 440 * 2 ** ((NOTES.indexOf(note) - 9 + (octave - 4) * 12) / 12);
@@ -59,15 +58,10 @@ function makeChords(scale: ScaleNote[], size: number = 3): Chord[] {
 }
 
 const toToneNote = (note: ScaleNote, index: number) => `${note.pitchClass}${3 + Math.floor(index / 2)}`;
-function notesForVoicing(chord: Chord, voicing: Voicing) {
-  if (voicing === 'shell') return chord.notes.length > 3 ? [chord.notes[0], chord.notes[1], chord.notes[3]] : chord.notes;
-  if (voicing === 'rootless') return chord.notes.length > 3 ? chord.notes.slice(1) : chord.notes.slice(1);
-  return chord.notes;
-}
-export function voiceLead(chords: Chord[], voicing: Voicing) {
+export function voiceLead(chords: Chord[]) {
   let previous: number[] = [];
   return chords.map(chord => {
-    const pitches = notesForVoicing(chord, voicing).map(note => NOTES.indexOf(note.pitchClass)).sort((a, b) => a - b);
+    const pitches = chord.notes.map(note => NOTES.indexOf(note.pitchClass)).sort((a, b) => a - b);
     const voiced = pitches.map((pitchClass, index) => {
       const candidates = [-1, 0, 1, 2].map(octave => 48 + pitchClass + octave * 12);
       const target = previous[index] ?? (55 + index * 4);
@@ -80,10 +74,11 @@ export function voiceLead(chords: Chord[], voicing: Voicing) {
 
 type Fingering = { frets: Array<number | null>; position: number; coveredNotes: number };
 export function commonFingering(chord: Chord): Fingering | null {
-  const rootFret = (NOTES.indexOf(chord.notes[0].pitchClass) - NOTES.indexOf('A') + 12) % 12;
+  const rootFretAtNut = (NOTES.indexOf(chord.notes[0].pitchClass) - NOTES.indexOf('A') + 12) % 12;
+  const rootFret = rootFretAtNut < 2 ? rootFretAtNut + 12 : rootFretAtNut;
   const intervals = chord.notes.map(note => (NOTES.indexOf(note.pitchClass) - NOTES.indexOf(chord.notes[0].pitchClass) + 12) % 12).sort((a, b) => a - b).join(',');
   // Familiar fifth-string-root grips, written low E → high E for the diagram.
-  const shapes: Record<string, Array<number | null>> = {
+  const fullShapes: Record<string, Array<number | null>> = {
     '0,4,7,11': [null, rootFret, rootFret + 2, rootFret + 1, rootFret + 2, rootFret], // maj7
     '0,3,7,10': [null, rootFret, rootFret + 2, rootFret, rootFret + 1, rootFret], // m7
     '0,4,7,10': [null, rootFret, rootFret + 2, rootFret, rootFret + 1, rootFret], // 7
@@ -92,12 +87,12 @@ export function commonFingering(chord: Chord): Fingering | null {
     '0,4,7': [null, rootFret, rootFret + 2, rootFret + 2, rootFret + 2, rootFret], // major
     '0,3,7': [null, rootFret, rootFret + 2, rootFret + 2, rootFret + 1, rootFret], // minor
   };
-  const shape = shapes[intervals];
+  const shape = fullShapes[intervals];
   if (!shape) return null;
-  return { frets: shape, position: rootFret === 0 ? 0 : rootFret, coveredNotes: chord.notes.length };
+  return { frets: shape, position: rootFret, coveredNotes: chord.notes.length };
 }
-function suggestedFingering(chord: Chord, voicing: Voicing): Fingering {
-  const targetNotes = new Set(notesForVoicing(chord, voicing).map(note => note.pitchClass));
+function suggestedFingering(chord: Chord): Fingering {
+  const targetNotes = new Set(chord.notes.map(note => note.pitchClass));
   const candidates = Array.from({ length: 10 }, (_, position) => {
     const availableFrets = position === 0 ? [0, 1, 2, 3] : [position, position + 1, position + 2, position + 3];
     const frets = DIAGRAM_STRINGS.map(open => availableFrets.find(fret => targetNotes.has(noteAt(open, fret)) && (fret !== 0 || position === 0)) ?? null);
@@ -109,9 +104,9 @@ function suggestedFingering(chord: Chord, voicing: Voicing): Fingering {
   return best;
 }
 
-function ChordDiagram({ chord, voicing }: { chord: Chord; voicing: Voicing }) {
+function ChordDiagram({ chord }: { chord: Chord }) {
   const commonShape = commonFingering(chord);
-  const fingering = commonShape ?? suggestedFingering(chord, voicing);
+  const fingering = commonShape ?? suggestedFingering(chord);
   const startFret = fingering.position === 0 ? 1 : fingering.position;
   return <div className="chord-diagram" aria-label={`${commonShape ? 'Common' : 'Suggested compact'} ${chord.name} fingering at fret ${startFret}`}>
     <svg viewBox="0 0 112 142" role="img" aria-hidden="true">
@@ -126,7 +121,7 @@ function ChordDiagram({ chord, voicing }: { chord: Chord; voicing: Voicing }) {
         return <g key={`note-${string}`}><circle className="diagram-dot" cx={x} cy={36 + row * 24} r="7" /><text className="diagram-note" x={x} y={40}>{noteAt(DIAGRAM_STRINGS[string], fret)}</text></g>;
       })}
     </svg>
-    <strong>{chord.name}</strong><small>{commonShape ? 'common comping grip' : 'compact fallback'} · starts at fret {startFret}</small>
+    <strong>{chord.name}</strong><small>{commonShape ? 'common full grip' : 'compact full grip'} · starts at fret {startFret}</small>
   </div>;
 }
 
@@ -155,12 +150,12 @@ function useToneEngine() {
     transport.position = 0;
   };
 
-  const playChord = async (notes: ScaleNote[], voicing: Voicing = 'full') => {
+  const playChord = async (notes: ScaleNote[]) => {
     const instrument = await start();
-    instrument.triggerAttackRelease(notesForVoicing({ name: '', notes }, voicing).map(toToneNote), '2n', Tone.now());
+    instrument.triggerAttackRelease(notes.map(toToneNote), '2n', Tone.now());
   };
 
-  const playLoop = async (chords: Chord[], bpm: number, voicing: Voicing, rhythm: Rhythm) => {
+  const playLoop = async (chords: Chord[], bpm: number, rhythm: Rhythm) => {
     const instrument = await start();
     stop();
     const transport = Tone.getTransport();
@@ -168,12 +163,18 @@ function useToneEngine() {
     transport.loop = true;
     transport.loopStart = 0;
     transport.loopEnd = `${chords.length}m`;
-    const voiced = voiceLead(chords, voicing);
-    const hits = rhythm === 'bossa' ? ['0:0', '0:1:2', '0:2:2', '0:3:2'] : ['0:0'];
+    const voiced = voiceLead(chords);
+    const rhythmHits: Record<Rhythm, string[]> = {
+      bossa: ['0:0', '0:1:2', '0:2:2', '0:3:2'],
+      swing: ['0:0', '0:1:2', '0:2', '0:3'],
+      samba: ['0:0', '0:1', '0:2:2', '0:3'],
+      straight: ['0:0'],
+    };
+    const hits = rhythmHits[rhythm];
     sequence.current = new Tone.Part<{ time: string; notes: string[]; bass?: string }>((time, event) => {
-      instrument.triggerAttackRelease(event.notes, rhythm === 'bossa' ? '8n' : '2n', time);
+      instrument.triggerAttackRelease(event.notes, rhythm === 'straight' ? '2n' : '8n', time);
       if (event.bass) instrument.triggerAttackRelease(event.bass, '8n', time, 0.7);
-    }, chords.flatMap((chord, index) => hits.map((hit, hitIndex) => ({ time: `${index}:${hit.slice(2)}`, notes: voiced[index], bass: rhythm === 'bossa' && (hitIndex === 0 || hitIndex === 2) ? `${chord.notes[0].pitchClass}2` : undefined }))));
+    }, chords.flatMap((chord, index) => hits.map((hit, hitIndex) => ({ time: `${index}:${hit.slice(2)}`, notes: voiced[index], bass: rhythm !== 'straight' && (hitIndex === 0 || hitIndex === 2) ? `${chord.notes[0].pitchClass}2` : undefined }))));
     sequence.current.start(0);
     transport.start('+0.05');
   };
@@ -266,11 +267,11 @@ function Progressions({ root, onLoad }: { root: string; onLoad: (chords: Chord[]
   })}</div></section>;
 }
 
-function Sequencer({ chords, bpm, isLooping, voicing, rhythm, onTempo, onVoicing, onRhythm, onPlay, onStop, onRemove, onClear }: { chords: Chord[]; bpm: number; isLooping: boolean; voicing: Voicing; rhythm: Rhythm; onTempo: (bpm: number) => void; onVoicing: (value: Voicing) => void; onRhythm: (value: Rhythm) => void; onPlay: () => void; onStop: () => void; onRemove: (index: number) => void; onClear: () => void }) {
+function Sequencer({ chords, bpm, isLooping, rhythm, onTempo, onRhythm, onPlay, onStop, onRemove, onClear }: { chords: Chord[]; bpm: number; isLooping: boolean; rhythm: Rhythm; onTempo: (bpm: number) => void; onRhythm: (value: Rhythm) => void; onPlay: () => void; onStop: () => void; onRemove: (index: number) => void; onClear: () => void }) {
   return <section className="sequencer"><div className="section-title sequencer-heading"><div><p className="eyebrow">Practice station</p><h2>Voice-led sequencer</h2><p>Each new chord is placed near the last one for smoother comping.</p></div><label>Tempo <output>{bpm} BPM</output><input aria-label="Tempo" type="range" min="60" max="180" value={bpm} onChange={event => onTempo(Number(event.target.value))} /></label></div>
-    <div className="performance-controls"><label>Voicing<select value={voicing} onChange={event => onVoicing(event.target.value as Voicing)}><option value="full">Full chord</option><option value="shell">Shell (R–3–7)</option><option value="rootless">Rootless (3–5–7)</option></select></label><label>Feel<select value={rhythm} onChange={event => onRhythm(event.target.value as Rhythm)}><option value="bossa">Bossa nova</option><option value="straight">Straight pulses</option></select></label><span className="rhythm-note">{rhythm === 'bossa' ? 'Syncopated chord hits + bass pulse' : 'One chord per bar'}</span></div>
+    <div className="performance-controls"><label>Feel<select value={rhythm} onChange={event => onRhythm(event.target.value as Rhythm)}><option value="bossa">Bossa nova</option><option value="samba">Samba</option><option value="swing">Swing</option><option value="straight">Straight pulses</option></select></label><RhythmNotation rhythm={rhythm} /><span className="rhythm-note">{rhythm === 'straight' ? 'One chord per bar' : 'Syncopated chord hits + bass pulse'}</span></div>
     <div className="sequence-steps">{chords.length ? chords.map((chord, index) => <button className="sequence-step" key={`${chord.name}-${index}`} onClick={() => onRemove(index)} title="Remove chord"><span>{index + 1}</span><div><strong>{chord.name}</strong><small>{chord.function ?? 'added chord'}</small></div></button>) : <p className="sequence-empty">Load a jazz progression, or add a chord from either column above.</p>}</div>
-    {chords.length > 0 && <div className="fingering-panel"><div><p className="eyebrow">Suggested shapes</p><h3>Fingerings for this loop</h3><p>Compact shapes based on the selected {voicing} voicing. Click a sequence step above to remove it.</p></div><div className="diagram-row">{chords.map((chord, index) => <ChordDiagram key={`${chord.name}-diagram-${index}`} chord={chord} voicing={voicing} />)}</div></div>}
+    {chords.length > 0 && <div className="fingering-panel"><div><p className="eyebrow">Suggested shapes</p><h3>Fingerings for this loop</h3><p>Common full-chord shapes. Click a sequence step above to remove it.</p></div><div className="diagram-row">{chords.map((chord, index) => <ChordDiagram key={`${chord.name}-diagram-${index}`} chord={chord} />)}</div></div>}
     <div className="sequencer-actions"><button className="play-selected" disabled={!chords.length} onClick={onPlay}>{isLooping ? 'Restart loop' : 'Start loop'}</button><button className="clear" disabled={!isLooping} onClick={onStop}>Stop</button><button className="clear" disabled={!chords.length} onClick={onClear}>Clear</button></div>
   </section>;
 }
@@ -278,19 +279,20 @@ function Sequencer({ chords, bpm, isLooping, voicing, rhythm, onTempo, onVoicing
 export default function App() {
   const [activeTab, setActiveTab] = useState<'scales' | 'namer'>('scales');
   const [root, setRoot] = useState('C'); const [scaleName, setScaleName] = useState('Major (Ionian)'); const [highlighted, setHighlighted] = useState<ScaleNote[] | null>(null);
-  const [sequence, setSequence] = useState<Chord[]>([]); const [bpm, setBpm] = useState(96); const [isLooping, setIsLooping] = useState(false); const [voicing, setVoicing] = useState<Voicing>('shell'); const [rhythm, setRhythm] = useState<Rhythm>('bossa');
+  const [sequence, setSequence] = useState<Chord[]>([]); const [bpm, setBpm] = useState(96); const [isLooping, setIsLooping] = useState(false); const [rhythm, setRhythm] = useState<Rhythm>('bossa');
   const engine = useToneEngine();
   const notes = useMemo(() => scaleNotes(root, SCALES[scaleName]), [root, scaleName]);
   const triads = useMemo(() => makeChords(notes), [notes]); const tetrads = useMemo(() => makeChords(notes, 4), [notes]);
   const stopLoop = () => { engine.stop(); setIsLooping(false); };
   const change = (nextRoot: string, nextScale: string) => { stopLoop(); setRoot(nextRoot); setScaleName(nextScale); setHighlighted(null); setSequence([]); };
-  const playChord = (chord: Chord) => { setHighlighted(chord.notes); void engine.playChord(chord.notes, voicing); };
-  const startLoop = () => { if (sequence.length) { void engine.playLoop(sequence, bpm, voicing, rhythm); setIsLooping(true); } };
+  const playChord = (chord: Chord) => { setHighlighted(chord.notes); void engine.playChord(chord.notes); };
+  const startLoop = () => { if (sequence.length) { void engine.playLoop(sequence, bpm, rhythm); setIsLooping(true); } };
+  const changeRhythm = (nextRhythm: Rhythm) => { setRhythm(nextRhythm); if (isLooping && sequence.length) void engine.playLoop(sequence, bpm, nextRhythm); };
   return <><header><a className="brand" href="/guitarscales/">Music Tools</a><nav><button className={`tab ${activeTab === 'scales' ? 'current' : ''}`} onClick={() => setActiveTab('scales')}>Practice</button><button className={`tab ${activeTab === 'namer' ? 'current' : ''}`} onClick={() => setActiveTab('namer')}>Chord Namer</button><a className="nav-item" href="https://github.com/fcaldas" target="_blank" rel="noreferrer">GitHub</a></nav></header>
-    {activeTab === 'namer' ? <ChordNamer onPlay={notes => void engine.playChord(notes, voicing)} /> : <main><section className="hero"><p className="eyebrow">Guitar harmony, in motion</p><h1>Bossa nova &amp; jazz practice lab</h1><p>Explore the neck, hear rich harmony, and build voice-led comping loops.</p></section><div className="controls"><label>Key centre<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Scale colour<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => void engine.playChord(notes.slice(0, -1), voicing)} aria-label="Play scale">▶</button></div>
+    {activeTab === 'namer' ? <ChordNamer onPlay={notes => void engine.playChord(notes)} /> : <main><section className="hero"><p className="eyebrow">Guitar harmony, in motion</p><h1>Bossa nova &amp; jazz practice lab</h1><p>Explore the neck, hear rich harmony, and build voice-led comping loops.</p></section><div className="controls"><label>Key centre<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Scale colour<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => void engine.playChord(notes.slice(0, -1))} aria-label="Play scale">▶</button></div>
       <Fretboard scale={notes} root={root} highlighted={highlighted} />
       <div className="chords"><ChordColumn title="Triads in scale" chords={triads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /><ChordColumn title="Tetrads in scale" chords={tetrads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /></div>
       <Progressions root={root} onLoad={chords => { stopLoop(); setSequence(chords); }} />
-      <Sequencer chords={sequence} bpm={bpm} isLooping={isLooping} voicing={voicing} rhythm={rhythm} onTempo={setBpm} onVoicing={setVoicing} onRhythm={setRhythm} onPlay={startLoop} onStop={stopLoop} onRemove={index => setSequence(current => current.filter((_, chordIndex) => chordIndex !== index))} onClear={() => { stopLoop(); setSequence([]); }} />
+      <Sequencer chords={sequence} bpm={bpm} isLooping={isLooping} rhythm={rhythm} onTempo={setBpm} onRhythm={changeRhythm} onPlay={startLoop} onStop={stopLoop} onRemove={index => setSequence(current => current.filter((_, chordIndex) => chordIndex !== index))} onClear={() => { stopLoop(); setSequence([]); }} />
     </main>}</>;
 }
