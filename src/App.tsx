@@ -155,6 +155,12 @@ function useToneEngine() {
     instrument.triggerAttackRelease(notes.map(toToneNote), '2n', Tone.now());
   };
 
+  const playScale = async (notes: ScaleNote[]) => {
+    const instrument = await start();
+    const startTime = Tone.now() + 0.05;
+    notes.forEach((note, index) => instrument.triggerAttackRelease(toToneNote(note, 0), '8n', startTime + index * 0.3));
+  };
+
   const playLoop = async (chords: Chord[], bpm: number, rhythm: Rhythm) => {
     const instrument = await start();
     stop();
@@ -180,7 +186,7 @@ function useToneEngine() {
   };
 
   useEffect(() => () => { stop(); synth.current?.dispose(); }, []);
-  return { playChord, playLoop, stop };
+  return { playChord, playScale, playLoop, stop };
 }
 
 function Fretboard({ scale, root, highlighted }: { scale: ScaleNote[]; root: string; highlighted: ScaleNote[] | null }) {
@@ -306,7 +312,7 @@ export default function App() {
   const startLoop = () => { if (sequence.length) { void engine.playLoop(sequence, bpm, rhythm); setIsLooping(true); } };
   const changeRhythm = (nextRhythm: Rhythm) => { setRhythm(nextRhythm); if (isLooping && sequence.length) void engine.playLoop(sequence, bpm, nextRhythm); };
   return <><header><a className="brand" href="/guitarscales/">Music Tools</a><nav><button className={`tab ${activeTab === 'scales' ? 'current' : ''}`} onClick={() => setActiveTab('scales')}>Practice</button><button className={`tab ${activeTab === 'namer' ? 'current' : ''}`} onClick={() => setActiveTab('namer')}>Chord Namer</button><a className="nav-item" href="https://github.com/fcaldas" target="_blank" rel="noreferrer">GitHub</a></nav></header>
-    {activeTab === 'namer' ? <ChordNamer onPlay={notes => void engine.playChord(notes)} onAdd={chord => setSequence(current => [...current, chord])} /> : <main><section className="hero"><p className="eyebrow">Guitar harmony, in motion</p><h1>Bossa nova &amp; jazz practice lab</h1><p>Explore the neck, hear rich harmony, and build voice-led comping loops.</p></section><div className="controls"><label>Key centre<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Scale colour<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => void engine.playChord(notes.slice(0, -1))} aria-label="Play scale">▶</button></div>
+    {activeTab === 'namer' ? <ChordNamer onPlay={notes => void engine.playChord(notes)} onAdd={chord => setSequence(current => [...current, chord])} /> : <main><section className="hero"><p className="eyebrow">Guitar harmony, in motion</p><h1>Bossa nova &amp; jazz practice lab</h1><p>Explore the neck, hear rich harmony, and build voice-led comping loops.</p></section><div className="controls"><label>Key centre<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Scale colour<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => void engine.playScale(notes)} aria-label="Play scale">▶</button></div>
       <Fretboard scale={notes} root={root} highlighted={highlighted} />
       <div className="chords"><ChordColumn title="Triads in scale" chords={triads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /><ChordColumn title="Tetrads in scale" chords={tetrads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /></div>
       <Progressions root={root} onLoad={chords => { stopLoop(); setSequence(chords); }} />
