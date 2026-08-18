@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commonFingering, DIAGRAM_STRINGS, nameSelectedChord, noteAt, voiceLead } from './App';
+import { commonFingering, DIAGRAM_STRINGS, nameSelectedChord, noteAt, scaleNotes } from './App';
 
 const note = (pitchClass: string) => ({ pitchClass, name: pitchClass });
 
@@ -22,24 +22,10 @@ describe('guitar chord diagrams', () => {
 
 });
 
-describe('voice leading', () => {
-  it('creates playable full voicings for every chord in a ii–V–I', () => {
-    const chords = [
-      { name: 'Dm7', notes: [note('D'), note('F'), note('A'), note('C')] },
-      { name: 'G7', notes: [note('G'), note('B'), note('D'), note('F')] },
-      { name: 'Cmaj7', notes: [note('C'), note('E'), note('G'), note('B')] },
-    ];
-    const voiced = voiceLead(chords);
-    expect(voiced).toHaveLength(3);
-    expect(voiced.every(chord => chord.length === 4)).toBe(true);
-    expect(voiced.flat().every(noteName => /^[A-G]#?\d$/.test(noteName))).toBe(true);
-  });
-
-  it('retains every chord tone in the default full voicing', () => {
-    const chord = [{ name: 'Cmaj7', notes: [note('C'), note('E'), note('G'), note('B')] }];
-    const full = voiceLead(chord)[0];
-
-    expect(full).toHaveLength(4);
+describe('scale spelling', () => {
+  it('uses conventional note names for G minor pentatonic', () => {
+    const notes = scaleNotes('G', [3, 2, 2, 3, 2], 'Minor Pentatonic');
+    expect(notes.map(note => note.name)).toEqual(['G', 'Bb', 'C', 'D', 'F', 'G']);
   });
 });
 

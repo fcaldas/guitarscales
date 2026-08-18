@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import * as Tone from 'tone';
+import { useMemo, useState } from 'react';
 import { RhythmNotation, type Rhythm } from './RhythmNotation';
+import { useToneEngine, type Instrument } from './toneEngine';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -14,6 +14,7 @@ const SCALES: Record<string, number[]> = {
   'Natural Minor (Aeolian)': [2, 1, 2, 2, 1, 2, 2],
   'Locrian (B)': [1, 2, 2, 1, 2, 2, 2],
   Pentatonic: [2, 2, 3, 2, 3],
+  'Minor Pentatonic': [3, 2, 2, 3, 2],
   'Harmonic Minor': [2, 1, 2, 2, 1, 3, 1],
 };
 const OPEN_STRINGS = ['E', 'B', 'G', 'D', 'A', 'E'];
@@ -31,12 +32,13 @@ function accidental(delta: number) {
   return ({ '-2': 'bb', '-1': 'b', '0': '', '1': '#', '2': '##' } as Record<string, string>)[String(delta)] ?? '';
 }
 
-function scaleNotes(root: string, steps: number[]): ScaleNote[] {
+export function scaleNotes(root: string, steps: number[], scaleName?: string): ScaleNote[] {
   const rootLetterIndex = LETTERS.indexOf(root[0]);
   const result: ScaleNote[] = [{ pitchClass: root, name: root }]; let current = NOTES.indexOf(root);
+  const letterOffsets = scaleName === 'Pentatonic' ? [0, 1, 2, 4, 5, 7] : scaleName === 'Minor Pentatonic' ? [0, 2, 3, 4, 6, 7] : undefined;
   steps.forEach((step, index) => {
     current = (current + step) % 12;
-    const letter = LETTERS[(rootLetterIndex + index + 1) % LETTERS.length];
+    const letter = LETTERS[(rootLetterIndex + (letterOffsets?.[index + 1] ?? index + 1)) % LETTERS.length];
     const rawDelta = (current - NATURAL_PITCHES[letter] + 18) % 12 - 6;
     result.push({ pitchClass: NOTES[current], name: `${letter}${accidental(rawDelta)}` });
   });
@@ -57,20 +59,6 @@ function makeChords(scale: ScaleNote[], size: number = 3): Chord[] {
   });
 }
 
-const toToneNote = (note: ScaleNote, index: number) => `${note.pitchClass}${3 + Math.floor(index / 2)}`;
-export function voiceLead(chords: Chord[]) {
-  let previous: number[] = [];
-  return chords.map(chord => {
-    const pitches = chord.notes.map(note => NOTES.indexOf(note.pitchClass)).sort((a, b) => a - b);
-    const voiced = pitches.map((pitchClass, index) => {
-      const candidates = [-1, 0, 1, 2].map(octave => 48 + pitchClass + octave * 12);
-      const target = previous[index] ?? (55 + index * 4);
-      return candidates.reduce((closest, candidate) => Math.abs(candidate - target) < Math.abs(closest - target) ? candidate : closest);
-    }).sort((a, b) => a - b);
-    previous = voiced;
-    return voiced.map(value => `${NOTES[value % 12]}${Math.floor(value / 12) - 1}`);
-  });
-}
 
 type Fingering = { frets: Array<number | null>; position: number; coveredNotes: number };
 export function commonFingering(chord: Chord): Fingering | null {
@@ -123,70 +111,6 @@ function ChordDiagram({ chord }: { chord: Chord }) {
     </svg>
     <strong>{chord.name}</strong><small>{commonShape ? 'common full grip' : 'compact full grip'} · starts at fret {startFret}</small>
   </div>;
-}
-
-function useToneEngine() {
-  const synth = useRef<Tone.PolySynth | null>(null);
-  const sequence = useRef<Tone.Part | null>(null);
-
-  const start = async () => {
-    await Tone.start();
-    if (!synth.current) {
-      synth.current = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.015, decay: 0.12, sustain: 0.35, release: 1.1 },
-      }).toDestination();
-      synth.current.volume.value = -8;
-    }
-    return synth.current;
-  };
-
-  const stop = () => {
-    sequence.current?.dispose();
-    sequence.current = null;
-    const transport = Tone.getTransport();
-    transport.stop();
-    transport.cancel();
-    transport.position = 0;
-  };
-
-  const playChord = async (notes: ScaleNote[]) => {
-    const instrument = await start();
-    instrument.triggerAttackRelease(notes.map(toToneNote), '2n', Tone.now());
-  };
-
-  const playScale = async (notes: ScaleNote[]) => {
-    const instrument = await start();
-    const startTime = Tone.now() + 0.05;
-    notes.forEach((note, index) => instrument.triggerAttackRelease(toToneNote(note, 0), '8n', startTime + index * 0.3));
-  };
-
-  const playLoop = async (chords: Chord[], bpm: number, rhythm: Rhythm) => {
-    const instrument = await start();
-    stop();
-    const transport = Tone.getTransport();
-    transport.bpm.value = bpm;
-    transport.loop = true;
-    transport.loopStart = 0;
-    transport.loopEnd = `${chords.length}m`;
-    const voiced = voiceLead(chords);
-    const rhythmHits: Record<Rhythm, string[]> = {
-      bossa: ['0:0', '0:1:2', '0:2:2', '0:3:2'],
-      swing: ['0:0', '0:1:2', '0:2', '0:3'],
-      samba: ['0:0', '0:1', '0:2:2', '0:3'],
-      straight: ['0:0'],
-    };
-    const hits = rhythmHits[rhythm];
-    sequence.current = new Tone.Part<{ time: string; notes: string[]; bass?: string }>((time, event) => {
-      instrument.triggerAttackRelease(event.notes, rhythm === 'straight' ? '2n' : '8n', time);
-      if (event.bass) instrument.triggerAttackRelease(event.bass, '8n', time, 0.7);
-    }, chords.flatMap((chord, index) => hits.map((hit, hitIndex) => ({ time: `${index}:${hit.slice(2)}`, notes: voiced[index], bass: rhythm !== 'straight' && (hitIndex === 0 || hitIndex === 2) ? `${chord.notes[0].pitchClass}2` : undefined }))));
-    sequence.current.start(0);
-    transport.start('+0.05');
-  };
-
-  useEffect(() => () => { stop(); synth.current?.dispose(); }, []);
-  return { playChord, playScale, playLoop, stop };
 }
 
 function Fretboard({ scale, root, highlighted }: { scale: ScaleNote[]; root: string; highlighted: ScaleNote[] | null }) {
@@ -290,6 +214,47 @@ function Progressions({ root, onLoad }: { root: string; onLoad: (chords: Chord[]
   })}</div></section>;
 }
 
+const DIATONIC_MOVES: Record<number, Array<{ degree: number; label: string; hint: string }>> = {
+  0: [{ degree: 1, label: 'ii', hint: 'set up a cadence' }, { degree: 3, label: 'IV', hint: 'open the harmony' }, { degree: 4, label: 'V', hint: 'build tension' }, { degree: 5, label: 'vi', hint: 'soft detour' }],
+  1: [{ degree: 4, label: 'V', hint: 'complete ii–V' }, { degree: 0, label: 'I', hint: 'resolve home' }, { degree: 5, label: 'vi', hint: 'continue the circle' }],
+  2: [{ degree: 5, label: 'vi', hint: 'circle movement' }, { degree: 3, label: 'IV', hint: 'gentle lift' }, { degree: 1, label: 'ii', hint: 'prepare V' }],
+  3: [{ degree: 0, label: 'I', hint: 'plagal return' }, { degree: 1, label: 'ii', hint: 'push to V' }, { degree: 4, label: 'V', hint: 'brighten the pull' }],
+  4: [{ degree: 0, label: 'I', hint: 'classic resolution' }, { degree: 5, label: 'vi', hint: 'deceptive turn' }, { degree: 1, label: 'ii', hint: 'keep the cycle moving' }],
+  5: [{ degree: 1, label: 'ii', hint: 'circle progression' }, { degree: 3, label: 'IV', hint: 'warm expansion' }, { degree: 4, label: 'V', hint: 'return through tension' }],
+  6: [{ degree: 0, label: 'I', hint: 'leading-tone release' }, { degree: 2, label: 'iii', hint: 'soft continuation' }],
+};
+
+type HarmonyMode = 'essential' | 'jazz' | 'adventurous';
+const HARMONY_MODES: Array<{ value: HarmonyMode; label: string; description: string }> = [
+  { value: 'essential', label: 'Essential', description: 'diatonic movement' },
+  { value: 'jazz', label: 'Jazz', description: 'dominants & bossa colour' },
+  { value: 'adventurous', label: 'Adventurous', description: 'borrowed & altered routes' },
+];
+const movementMood = (degree: number) => degree === 0 ? 'resolve' : degree === 4 ? 'tension' : degree === 5 ? 'surprise' : 'flow';
+
+function HarmonicMap({ root, chords, onAdd }: { root: string; chords: Chord[]; onAdd: (chords: Chord[]) => void }) {
+  const [activeDegree, setActiveDegree] = useState(0);
+  const [mode, setMode] = useState<HarmonyMode>('jazz');
+  const [route, setRoute] = useState<Chord[]>([]);
+  if (chords.length !== 7) return <section className="harmony-map"><p className="eyebrow">Harmonic map</p><h2>Choose a seven-note scale</h2><p>Switch to a major or modal scale to explore key-aware chord paths.</p></section>;
+  const moves = DIATONIC_MOVES[activeDegree];
+  const colourMoves = [
+    { label: 'V/ii → ii', hint: 'secondary dominant', mood: 'tension', target: 1, chords: [jazzChord(noteAt(root, 9), [0, 4, 7, 10], '7', 'V/ii'), chords[1]] },
+    { label: 'V/V → V', hint: 'turn up the dominant', mood: 'tension', target: 4, chords: [jazzChord(noteAt(root, 2), [0, 4, 7, 10], '7', 'V/V'), chords[4]] },
+    { label: 'iv → I', hint: 'borrowed bossa colour', mood: 'surprise', target: 0, chords: [jazzChord(noteAt(root, 5), [0, 3, 7, 10], 'm7', 'iv'), chords[0]] },
+    { label: 'subV → I', hint: 'tritone substitution', mood: 'surprise', target: 0, chords: [jazzChord(noteAt(root, 1), [0, 4, 7, 10], '7', 'subV'), chords[0]] },
+    { label: 'iv → ♭VII → I', hint: 'backdoor resolution', mood: 'tension', target: 0, chords: [jazzChord(noteAt(root, 5), [0, 3, 7, 10], 'm7', 'iv'), jazzChord(noteAt(root, 10), [0, 4, 7, 10], '7', '♭VII7'), chords[0]] },
+  ];
+  const availableColourMoves = mode === 'essential' ? [] : colourMoves.slice(0, mode === 'jazz' ? 3 : 5);
+  const appendRoute = (next: Chord[], target: number) => { setRoute(current => current.length ? [...current, ...next] : [chords[activeDegree], ...next]); setActiveDegree(target); };
+  return <section className="harmony-map"><div className="map-top"><div className="section-title"><div><p className="eyebrow">Harmonic map</p><h2>Follow the next chord</h2></div><p>Build a route in {root}, then send it to your sequencer.</p></div><div className="music-motif" aria-hidden="true">♪ ♫ ♪</div></div>
+    <div className="harmony-modes" role="group" aria-label="Harmony complexity">{HARMONY_MODES.map(option => <button key={option.value} className={mode === option.value ? 'active' : ''} onClick={() => setMode(option.value)}><strong>{option.label}</strong><small>{option.description}</small></button>)}</div>
+    <div className="degree-rail">{chords.map((chord, degree) => <button className={degree === activeDegree ? 'active' : ''} key={chord.name} onClick={() => setActiveDegree(degree)}><small>{['I', 'ii', 'iii', 'IV', 'V', 'vi', 'viiø'][degree]}</small><strong>{chord.name}</strong></button>)}</div>
+    <div className="route-builder"><div><p className="eyebrow">Your route</p><div className="route-pills">{route.length ? route.map((chord, index) => <span key={`${chord.name}-${index}`}>{index > 0 && <b>→</b>}{chord.name}</span>) : <em>Select a chord above, then choose a move.</em>}</div></div><div className="route-actions"><button className="clear" disabled={!route.length} onClick={() => setRoute([])}>Clear route</button><button className="play-selected" disabled={!route.length} onClick={() => { onAdd(route); setRoute([]); }}>Add route to sequencer</button></div></div>
+    <div className="map-content"><div><p className="map-label">From <strong>{chords[activeDegree].name}</strong> · diatonic choices</p><div className="move-grid">{moves.map(move => <button className={`harmonic-move ${movementMood(move.degree)}`} key={move.label} onClick={() => appendRoute([chords[move.degree]], move.degree)}><span>{chords[activeDegree].name} <b>→</b> {chords[move.degree].name}</span><small><i>{movementMood(move.degree)}</i>{move.label} · {move.hint}</small></button>)}</div></div>{availableColourMoves.length > 0 && <div><p className="map-label">Colour moves</p><div className="move-grid colour-moves">{availableColourMoves.map(move => <button className={`harmonic-move ${move.mood}`} key={move.label} onClick={() => appendRoute(move.chords, move.target)}><span>{move.chords.map(chord => chord.name).join(' → ')}</span><small><i>{move.mood}</i>{move.label} · {move.hint}</small></button>)}</div></div>}</div>
+  </section>;
+}
+
 function Sequencer({ chords, bpm, isLooping, rhythm, onTempo, onRhythm, onPlay, onStop, onRemove, onClear }: { chords: Chord[]; bpm: number; isLooping: boolean; rhythm: Rhythm; onTempo: (bpm: number) => void; onRhythm: (value: Rhythm) => void; onPlay: () => void; onStop: () => void; onRemove: (index: number) => void; onClear: () => void }) {
   return <section className="sequencer"><div className="section-title sequencer-heading"><div><p className="eyebrow">Practice station</p><h2>Voice-led sequencer</h2><p>Each new chord is placed near the last one for smoother comping.</p></div><label>Tempo <output>{bpm} BPM</output><input aria-label="Tempo" type="range" min="60" max="180" value={bpm} onChange={event => onTempo(Number(event.target.value))} /></label></div>
     <div className="performance-controls"><label>Feel<select value={rhythm} onChange={event => onRhythm(event.target.value as Rhythm)}><option value="bossa">Bossa nova</option><option value="samba">Samba</option><option value="swing">Swing</option><option value="straight">Straight pulses</option></select></label><RhythmNotation rhythm={rhythm} /><span className="rhythm-note">{rhythm === 'straight' ? 'One chord per bar' : 'Syncopated chord hits + bass pulse'}</span></div>
@@ -299,22 +264,29 @@ function Sequencer({ chords, bpm, isLooping, rhythm, onTempo, onRhythm, onPlay, 
   </section>;
 }
 
+function SoundOverlay({ instrument, reverb, onInstrument, onReverb, onClose }: { instrument: Instrument; reverb: number; onInstrument: (instrument: Instrument) => void; onReverb: (amount: number) => void; onClose: () => void }) {
+  return <div className="sound-backdrop" role="presentation" onMouseDown={onClose}><section className="sound-overlay" role="dialog" aria-modal="true" aria-label="Sound settings" onMouseDown={event => event.stopPropagation()}><button className="sound-close" onClick={onClose} aria-label="Close sound settings">×</button><p className="eyebrow">Sound settings</p><h2>Shape the accompaniment</h2><label>Instrument<select value={instrument} onChange={event => onInstrument(event.target.value as Instrument)}><option value="nylon">Nylon guitar</option><option value="electric">Electric guitar</option><option value="organ">Jazz organ</option></select></label><label>Reverb <output>{Math.round(reverb * 100)}%</output><input aria-label="Reverb mix" type="range" min="0" max="0.75" step="0.05" value={reverb} onChange={event => onReverb(Number(event.target.value))} /></label><p className="sound-hint">Applies to scales, chords, and sequencer playback.</p></section></div>;
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'scales' | 'namer'>('scales');
   const [root, setRoot] = useState('C'); const [scaleName, setScaleName] = useState('Major (Ionian)'); const [highlighted, setHighlighted] = useState<ScaleNote[] | null>(null);
-  const [sequence, setSequence] = useState<Chord[]>([]); const [bpm, setBpm] = useState(96); const [isLooping, setIsLooping] = useState(false); const [rhythm, setRhythm] = useState<Rhythm>('bossa');
-  const engine = useToneEngine();
-  const notes = useMemo(() => scaleNotes(root, SCALES[scaleName]), [root, scaleName]);
+  const [sequence, setSequence] = useState<Chord[]>([]); const [bpm, setBpm] = useState(96); const [isLooping, setIsLooping] = useState(false); const [rhythm, setRhythm] = useState<Rhythm>('bossa'); const [instrument, setInstrument] = useState<Instrument>('nylon'); const [reverb, setReverb] = useState(0.2); const [soundOpen, setSoundOpen] = useState(false);
+  const engine = useToneEngine(instrument, reverb);
+  const notes = useMemo(() => scaleNotes(root, SCALES[scaleName], scaleName), [root, scaleName]);
   const triads = useMemo(() => makeChords(notes), [notes]); const tetrads = useMemo(() => makeChords(notes, 4), [notes]);
   const stopLoop = () => { engine.stop(); setIsLooping(false); };
   const change = (nextRoot: string, nextScale: string) => { stopLoop(); setRoot(nextRoot); setScaleName(nextScale); setHighlighted(null); setSequence([]); };
   const playChord = (chord: Chord) => { setHighlighted(chord.notes); void engine.playChord(chord.notes); };
   const startLoop = () => { if (sequence.length) { void engine.playLoop(sequence, bpm, rhythm); setIsLooping(true); } };
   const changeRhythm = (nextRhythm: Rhythm) => { setRhythm(nextRhythm); if (isLooping && sequence.length) void engine.playLoop(sequence, bpm, nextRhythm); };
-  return <><header><a className="brand" href="/guitarscales/">Music Tools</a><nav><button className={`tab ${activeTab === 'scales' ? 'current' : ''}`} onClick={() => setActiveTab('scales')}>Practice</button><button className={`tab ${activeTab === 'namer' ? 'current' : ''}`} onClick={() => setActiveTab('namer')}>Chord Namer</button><a className="nav-item" href="https://github.com/fcaldas" target="_blank" rel="noreferrer">GitHub</a></nav></header>
+  const changeInstrument = (nextInstrument: Instrument) => { stopLoop(); setInstrument(nextInstrument); };
+  return <><header><a className="brand" href="/guitarscales/">Music Tools</a><nav><button className={`tab ${activeTab === 'scales' ? 'current' : ''}`} onClick={() => setActiveTab('scales')}>Practice</button><button className={`tab ${activeTab === 'namer' ? 'current' : ''}`} onClick={() => setActiveTab('namer')}>Chord Namer</button><button className="sound-button" onClick={() => setSoundOpen(true)}>Settings</button><a className="nav-item" href="https://github.com/fcaldas" target="_blank" rel="noreferrer">GitHub</a></nav></header>
+    {soundOpen && <SoundOverlay instrument={instrument} reverb={reverb} onInstrument={changeInstrument} onReverb={setReverb} onClose={() => setSoundOpen(false)} />}
     {activeTab === 'namer' ? <ChordNamer onPlay={notes => void engine.playChord(notes)} onAdd={chord => setSequence(current => [...current, chord])} /> : <main><section className="hero"><p className="eyebrow">Guitar harmony, in motion</p><h1>Bossa nova &amp; jazz practice lab</h1><p>Explore the neck, hear rich harmony, and build voice-led comping loops.</p></section><div className="controls"><label>Key centre<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Scale colour<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => void engine.playScale(notes)} aria-label="Play scale">▶</button></div>
       <Fretboard scale={notes} root={root} highlighted={highlighted} />
       <div className="chords"><ChordColumn title="Triads in scale" chords={triads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /><ChordColumn title="Tetrads in scale" chords={tetrads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /></div>
+      <HarmonicMap root={root} chords={tetrads} onAdd={chords => { stopLoop(); setSequence(current => [...current, ...chords]); }} />
       <Progressions root={root} onLoad={chords => { stopLoop(); setSequence(chords); }} />
       <Sequencer chords={sequence} bpm={bpm} isLooping={isLooping} rhythm={rhythm} onTempo={setBpm} onRhythm={changeRhythm} onPlay={startLoop} onStop={stopLoop} onRemove={index => setSequence(current => current.filter((_, chordIndex) => chordIndex !== index))} onClear={() => { stopLoop(); setSequence([]); }} />
     </main>}</>;
