@@ -73,7 +73,7 @@ export function useToneEngine(instrument: Instrument, reverbAmount: number) {
     notes.forEach((note, index) => activeSynth.triggerAttackRelease(toToneNote(note, 0), '8n', startTime + index * 0.3));
   };
 
-  const playLoop = async (chords: PlayableChord[], bpm: number, rhythm: Rhythm) => {
+  const playLoop = async (chords: PlayableChord[], bpm: number, rhythm: Rhythm, onChordChange?: (index: number) => void) => {
     const activeSynth = await start();
     stop();
     const transport = Tone.getTransport();
@@ -83,10 +83,13 @@ export function useToneEngine(instrument: Instrument, reverbAmount: number) {
     transport.loopEnd = `${chords.length}m`;
     const voiced = voiceLead(chords);
     const hits = rhythmPattern(rhythm);
-    sequence.current = new Tone.Part<{ time: string; notes: string[]; bass?: string }>((time, event) => {
+    sequence.current = new Tone.Part<{ time: string; notes: string[]; bass?: string; index: number; isDownbeat: boolean }>((time, event) => {
       activeSynth.triggerAttackRelease(event.notes, rhythm === 'straight' ? '2n' : '8n', time);
       if (event.bass) activeSynth.triggerAttackRelease(event.bass, '8n', time, 0.7);
-    }, chords.flatMap((chord, index) => hits.map((hit, hitIndex) => ({ time: `${index}:${hit.slice(2)}`, notes: voiced[index], bass: rhythm !== 'straight' && (hitIndex === 0 || hitIndex === 2) ? `${chord.notes[0].pitchClass}2` : undefined }))));
+      // Transport callbacks run on Tone's audio clock. Hand UI state back to the
+      // draw clock so React updates in sync with the bar that is being heard.
+      if (event.isDownbeat) Tone.Draw.schedule(() => onChordChange?.(event.index), time);
+    }, chords.flatMap((chord, index) => hits.map((hit, hitIndex) => ({ time: `${index}:${hit.slice(2)}`, notes: voiced[index], index, isDownbeat: hitIndex === 0, bass: rhythm !== 'straight' && (hitIndex === 0 || hitIndex === 2) ? `${chord.notes[0].pitchClass}2` : undefined }))));
     sequence.current.start(0);
     transport.start('+0.05');
   };

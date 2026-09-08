@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { RhythmNotation, type Rhythm } from './RhythmNotation';
 import { useToneEngine, type Instrument } from './toneEngine';
+import { nextChordTarget, soloScaleNotes, soloToneRole, type SoloStyle } from './soloTheory';
 
 const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -113,9 +114,9 @@ function ChordDiagram({ chord }: { chord: Chord }) {
   </div>;
 }
 
-function Fretboard({ scale, root, highlighted }: { scale: ScaleNote[]; root: string; highlighted: ScaleNote[] | null }) {
+function Fretboard({ scale, root, highlighted, soloChord, soloNotes }: { scale: ScaleNote[]; root: string; highlighted: ScaleNote[] | null; soloChord?: Chord | null; soloNotes?: string[] }) {
   const spelling = new Map(scale.map(note => [note.pitchClass, note.name]));
-  const selected = new Set(scale.map(note => note.pitchClass)); const active = new Set((highlighted ?? []).map(note => note.pitchClass));
+  const selected = new Set(soloNotes ?? scale.map(note => note.pitchClass)); const active = new Set((highlighted ?? []).map(note => note.pitchClass));
   return <div className="fretboard-wrap"><svg viewBox="0 0 1200 205" role="img" aria-label="Guitar fretboard">
     <rect className="neck" x="0" y="0" width="1200" height="184" rx="3" />
     {FRETS.map(fret => <line className="fret" key={fret} x1={fret * 100} x2={fret * 100} y1="0" y2="184" />)}
@@ -123,7 +124,8 @@ function Fretboard({ scale, root, highlighted }: { scale: ScaleNote[]; root: str
     {[5, 7, 9].map(fret => <text className="fret-label" key={fret} x={fret * 100 - 8} y="202">{fret}</text>)}
     {OPEN_STRINGS.flatMap((open, stringIndex) => FRETS.map(fret => {
       const note = noteAt(open, fret); const x = fret === 0 ? 12 : fret * 100 - 35;
-      const state = active.has(note) ? 'active' : note === root ? 'root' : selected.has(note) ? 'selected' : 'muted';
+      const soloRole = soloChord ? soloToneRole(soloChord, note, soloNotes ?? []) : undefined;
+      const state = soloRole && soloRole !== 'outside' ? `solo-${soloRole}` : active.has(note) ? 'active' : note === root ? 'root' : selected.has(note) ? 'selected' : 'muted';
       return <g key={`${stringIndex}-${fret}`}><circle className={`marker ${state}`} cx={x} cy={STRING_Y[stringIndex]} r="16" /><text className={`note ${state}`} x={x} y={STRING_Y[stringIndex] + 5}>{spelling.get(note) ?? note}</text></g>;
     }))}
   </svg></div>;
@@ -255,10 +257,11 @@ function HarmonicMap({ root, chords, onAdd }: { root: string; chords: Chord[]; o
   </section>;
 }
 
-function Sequencer({ chords, bpm, isLooping, rhythm, onTempo, onRhythm, onPlay, onStop, onRemove, onClear }: { chords: Chord[]; bpm: number; isLooping: boolean; rhythm: Rhythm; onTempo: (bpm: number) => void; onRhythm: (value: Rhythm) => void; onPlay: () => void; onStop: () => void; onRemove: (index: number) => void; onClear: () => void }) {
+function Sequencer({ chords, bpm, isLooping, rhythm, soloMode, soloStyle, activeChordIndex, onTempo, onRhythm, onSoloMode, onSoloStyle, onPlay, onStop, onRemove, onClear }: { chords: Chord[]; bpm: number; isLooping: boolean; rhythm: Rhythm; soloMode: boolean; soloStyle: SoloStyle; activeChordIndex: number | null; onTempo: (bpm: number) => void; onRhythm: (value: Rhythm) => void; onSoloMode: (enabled: boolean) => void; onSoloStyle: (style: SoloStyle) => void; onPlay: () => void; onStop: () => void; onRemove: (index: number) => void; onClear: () => void }) {
   return <section className="sequencer"><div className="section-title sequencer-heading"><div><p className="eyebrow">Practice station</p><h2>Voice-led sequencer</h2><p>Each new chord is placed near the last one for smoother comping.</p></div><label>Tempo <output>{bpm} BPM</output><input aria-label="Tempo" type="range" min="60" max="180" value={bpm} onChange={event => onTempo(Number(event.target.value))} /></label></div>
     <div className="performance-controls"><label>Feel<select value={rhythm} onChange={event => onRhythm(event.target.value as Rhythm)}><option value="bossa">Bossa nova</option><option value="samba">Samba</option><option value="swing">Swing</option><option value="straight">Straight pulses</option></select></label><RhythmNotation rhythm={rhythm} /><span className="rhythm-note">{rhythm === 'straight' ? 'One chord per bar' : 'Syncopated chord hits + bass pulse'}</span></div>
-    <div className="sequence-steps">{chords.length ? chords.map((chord, index) => <button className="sequence-step" key={`${chord.name}-${index}`} onClick={() => onRemove(index)} title="Remove chord"><span>{index + 1}</span><div><strong>{chord.name}</strong><small>{chord.function ?? 'added chord'}</small></div></button>) : <p className="sequence-empty">Load a jazz progression, or add a chord from either column above.</p>}</div>
+    <div className="solo-controls"><div><p className="eyebrow">Solo coach</p><strong>Guide the fretboard through each chord</strong></div><label className="solo-toggle"><input type="checkbox" checked={soloMode} onChange={event => onSoloMode(event.target.checked)} /> Solo Mode</label><label>Colour<select value={soloStyle} disabled={!soloMode} onChange={event => onSoloStyle(event.target.value as SoloStyle)}><option value="safe">Safe</option><option value="jazzy">Jazzy</option><option value="altered">Altered</option></select></label></div>
+    <div className="sequence-steps">{chords.length ? chords.map((chord, index) => <button className={`sequence-step ${activeChordIndex === index ? 'current-step' : ''}`} key={`${chord.name}-${index}`} onClick={() => onRemove(index)} title="Remove chord"><span>{index + 1}</span><div><strong>{chord.name}</strong><small>{activeChordIndex === index && soloMode ? 'now playing' : chord.function ?? 'added chord'}</small></div></button>) : <p className="sequence-empty">Load a jazz progression, or add a chord from either column above.</p>}</div>
     {chords.length > 0 && <div className="fingering-panel"><div><p className="eyebrow">Suggested shapes</p><h3>Fingerings for this loop</h3><p>Common full-chord shapes. Click a sequence step above to remove it.</p></div><div className="diagram-row">{chords.map((chord, index) => <ChordDiagram key={`${chord.name}-diagram-${index}`} chord={chord} />)}</div></div>}
     <div className="sequencer-actions"><button className="play-selected" disabled={!chords.length} onClick={onPlay}>{isLooping ? 'Restart loop' : 'Start loop'}</button><button className="clear" disabled={!isLooping} onClick={onStop}>Stop</button><button className="clear" disabled={!chords.length} onClick={onClear}>Clear</button></div>
   </section>;
@@ -271,23 +274,28 @@ function SoundOverlay({ instrument, reverb, onInstrument, onReverb, onClose }: {
 export default function App() {
   const [activeTab, setActiveTab] = useState<'scales' | 'namer'>('scales');
   const [root, setRoot] = useState('C'); const [scaleName, setScaleName] = useState('Major (Ionian)'); const [highlighted, setHighlighted] = useState<ScaleNote[] | null>(null);
-  const [sequence, setSequence] = useState<Chord[]>([]); const [bpm, setBpm] = useState(96); const [isLooping, setIsLooping] = useState(false); const [rhythm, setRhythm] = useState<Rhythm>('bossa'); const [instrument, setInstrument] = useState<Instrument>('nylon'); const [reverb, setReverb] = useState(0.2); const [soundOpen, setSoundOpen] = useState(false);
+  const [sequence, setSequence] = useState<Chord[]>([]); const [bpm, setBpm] = useState(96); const [isLooping, setIsLooping] = useState(false); const [rhythm, setRhythm] = useState<Rhythm>('bossa'); const [instrument, setInstrument] = useState<Instrument>('nylon'); const [reverb, setReverb] = useState(0.2); const [soundOpen, setSoundOpen] = useState(false); const [soloMode, setSoloMode] = useState(false); const [soloStyle, setSoloStyle] = useState<SoloStyle>('safe'); const [activeChordIndex, setActiveChordIndex] = useState<number | null>(null);
   const engine = useToneEngine(instrument, reverb);
   const notes = useMemo(() => scaleNotes(root, SCALES[scaleName], scaleName), [root, scaleName]);
   const triads = useMemo(() => makeChords(notes), [notes]); const tetrads = useMemo(() => makeChords(notes, 4), [notes]);
-  const stopLoop = () => { engine.stop(); setIsLooping(false); };
+  const stopLoop = () => { engine.stop(); setIsLooping(false); setActiveChordIndex(null); };
   const change = (nextRoot: string, nextScale: string) => { stopLoop(); setRoot(nextRoot); setScaleName(nextScale); setHighlighted(null); setSequence([]); };
   const playChord = (chord: Chord) => { setHighlighted(chord.notes); void engine.playChord(chord.notes); };
-  const startLoop = () => { if (sequence.length) { void engine.playLoop(sequence, bpm, rhythm); setIsLooping(true); } };
-  const changeRhythm = (nextRhythm: Rhythm) => { setRhythm(nextRhythm); if (isLooping && sequence.length) void engine.playLoop(sequence, bpm, nextRhythm); };
+  const startLoop = () => { if (sequence.length) { setActiveChordIndex(0); void engine.playLoop(sequence, bpm, rhythm, setActiveChordIndex); setIsLooping(true); } };
+  const changeRhythm = (nextRhythm: Rhythm) => { setRhythm(nextRhythm); if (isLooping && sequence.length) void engine.playLoop(sequence, bpm, nextRhythm, setActiveChordIndex); };
   const changeInstrument = (nextInstrument: Instrument) => { stopLoop(); setInstrument(nextInstrument); };
+  const activeSoloChord = soloMode && sequence.length ? sequence[activeChordIndex ?? 0] : null;
+  const activeSoloNotes = useMemo(() => activeSoloChord ? soloScaleNotes(activeSoloChord, soloStyle, notes.slice(0, -1).map(note => note.pitchClass)) : undefined, [activeSoloChord, notes, soloStyle]);
+  const nextSoloChord = activeSoloChord && sequence.length ? sequence[((activeChordIndex ?? 0) + 1) % sequence.length] : null;
+  const targetNote = nextSoloChord ? nextChordTarget(nextSoloChord) : null;
   return <><header><a className="brand" href="/guitarscales/">Music Tools</a><nav><button className={`tab ${activeTab === 'scales' ? 'current' : ''}`} onClick={() => setActiveTab('scales')}>Practice</button><button className={`tab ${activeTab === 'namer' ? 'current' : ''}`} onClick={() => setActiveTab('namer')}>Chord Namer</button><button className="sound-button" onClick={() => setSoundOpen(true)}>Settings</button><a className="nav-item" href="https://github.com/fcaldas" target="_blank" rel="noreferrer">GitHub</a></nav></header>
     {soundOpen && <SoundOverlay instrument={instrument} reverb={reverb} onInstrument={changeInstrument} onReverb={setReverb} onClose={() => setSoundOpen(false)} />}
     {activeTab === 'namer' ? <ChordNamer onPlay={notes => void engine.playChord(notes)} onAdd={chord => setSequence(current => [...current, chord])} /> : <main><section className="hero"><p className="eyebrow">Guitar harmony, in motion</p><h1>Bossa nova &amp; jazz practice lab</h1><p>Explore the neck, hear rich harmony, and build voice-led comping loops.</p></section><div className="controls"><label>Key centre<select value={root} onChange={event => change(event.target.value, scaleName)}>{NOTES.map(note => <option key={note}>{note}</option>)}</select></label><label>Scale colour<select value={scaleName} onChange={event => change(root, event.target.value)}>{Object.keys(SCALES).map(name => <option key={name}>{name}</option>)}</select></label><button className="play-scale" onClick={() => void engine.playScale(notes)} aria-label="Play scale">▶</button></div>
-      <Fretboard scale={notes} root={root} highlighted={highlighted} />
+      {soloMode && <aside className="solo-guide"><div><p className="eyebrow">Solo coach</p><h2>{activeSoloChord ? `Over ${activeSoloChord.name}` : 'Ready to solo'}</h2><p><span className="solo-key root-key">Root</span><span className="solo-key guide-key">Guide tones</span><span className="solo-key chord-key">Chord tones</span><span className="solo-key tension-key">Tensions</span></p></div>{targetNote && <div className="target-note"><small>Next target</small><strong>{targetNote.name}</strong><span>land on the 3rd of {nextSoloChord?.name}</span></div>}</aside>}
+      <Fretboard scale={notes} root={root} highlighted={highlighted} soloChord={activeSoloChord} soloNotes={activeSoloNotes} />
       <div className="chords"><ChordColumn title="Triads in scale" chords={triads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /><ChordColumn title="Tetrads in scale" chords={tetrads} onPlay={playChord} onAdd={chord => setSequence(current => [...current, chord])} /></div>
       <HarmonicMap root={root} chords={tetrads} onAdd={chords => { stopLoop(); setSequence(current => [...current, ...chords]); }} />
       <Progressions root={root} onLoad={chords => { stopLoop(); setSequence(chords); }} />
-      <Sequencer chords={sequence} bpm={bpm} isLooping={isLooping} rhythm={rhythm} onTempo={setBpm} onRhythm={changeRhythm} onPlay={startLoop} onStop={stopLoop} onRemove={index => setSequence(current => current.filter((_, chordIndex) => chordIndex !== index))} onClear={() => { stopLoop(); setSequence([]); }} />
+      <Sequencer chords={sequence} bpm={bpm} isLooping={isLooping} rhythm={rhythm} soloMode={soloMode} soloStyle={soloStyle} activeChordIndex={activeChordIndex} onTempo={setBpm} onRhythm={changeRhythm} onSoloMode={setSoloMode} onSoloStyle={setSoloStyle} onPlay={startLoop} onStop={stopLoop} onRemove={index => setSequence(current => current.filter((_, chordIndex) => chordIndex !== index))} onClear={() => { stopLoop(); setSequence([]); }} />
     </main>}</>;
 }
