@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isDominantChord, nextChordTarget, soloScaleNotes, soloToneRole } from './soloTheory';
+import { isDominantChord, nextChordTarget, soloScaleNotes, soloToneRole, toggleSoloToneRole } from './soloTheory';
 
 const note = (pitchClass: string) => ({ pitchClass, name: pitchClass });
 const g7 = { notes: [note('G'), note('B'), note('D'), note('F')] };
@@ -14,4 +14,8 @@ describe('solo theory', () => {
     expect(soloToneRole(g7, 'F', notes)).toBe('guide');
   });
   it('targets the third of the next chord', () => expect(nextChordTarget(cmaj7).pitchClass).toBe('E'));
+  it('toggles a visible tone category without affecting the others', () => {
+    expect(toggleSoloToneRole([], 'guide')).toEqual(['guide']);
+    expect(toggleSoloToneRole(['root', 'guide'], 'guide')).toEqual(['root']);
+  });
 });

@@ -5,6 +5,10 @@ const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 export type SoloStyle = 'safe' | 'jazzy' | 'altered';
 export type SoloToneRole = 'root' | 'guide' | 'chord-tone' | 'tension' | 'outside';
 
+export function toggleSoloToneRole(hiddenRoles: SoloToneRole[], role: SoloToneRole) {
+  return hiddenRoles.includes(role) ? hiddenRoles.filter(hiddenRole => hiddenRole !== role) : [...hiddenRoles, role];
+}
+
 const noteAt = (note: string, semitones: number) => NOTES[(NOTES.indexOf(note) + semitones) % 12];
 const intervalsFor = (chord: PlayableChord) => chord.notes.map(note => (NOTES.indexOf(note.pitchClass) - NOTES.indexOf(chord.notes[0].pitchClass) + 12) % 12);
 
