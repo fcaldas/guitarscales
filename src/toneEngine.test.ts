@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INSTRUMENT_PRESETS, rhythmPattern, voiceLead } from './toneEngine';
+import { INSTRUMENT_PRESETS, melodyDuration, melodyEventTime, rhythmPattern, voiceLead } from './toneEngine';
 
 const note = (pitchClass: string) => ({ pitchClass, name: pitchClass });
 
@@ -20,6 +20,14 @@ describe('tone engine rhythm patterns', () => {
 
   it('schedules four syncopated hits for bossa nova', () => {
     expect(rhythmPattern('bossa')).toEqual(['0:0', '0:1:2', '0:2:2', '0:3:2']);
+  });
+
+  it('places melody eighth notes on the transport grid', () => {
+    expect([0, 1, 2, 7].map(step => melodyEventTime(2, step))).toEqual(['2:0:0', '2:0:2', '2:1:0', '2:3:2']);
+  });
+
+  it('maps score durations to Tone notation', () => {
+    expect([1, 2, 3, 4, 8].map(melodyDuration)).toEqual(['8n', '4n', '4n.', '2n', '1n']);
   });
 });
 

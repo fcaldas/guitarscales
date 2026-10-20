@@ -6,6 +6,7 @@ const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 export type PlayableNote = { pitchClass: string; name: string };
 export type PlayableChord = { notes: PlayableNote[] };
+export type PlayableMelodyEvent = { id: string; bar: number; step: number; pitch: string; durationSteps?: number };
 export type Instrument = 'nylon' | 'electric' | 'organ';
 
 export const INSTRUMENT_PRESETS = {
@@ -20,6 +21,9 @@ export const rhythmPattern = (rhythm: Rhythm): string[] => ({
   samba: ['0:0', '0:1', '0:2:2', '0:3'],
   straight: ['0:0'],
 }[rhythm]);
+
+export const melodyEventTime = (bar: number, step: number) => `${bar}:${Math.floor(step / 2)}:${step % 2 ? 2 : 0}`;
+export const melodyDuration = (durationSteps = 1) => ({ 1: '8n', 2: '4n', 3: '4n.', 4: '2n', 8: '1n' }[durationSteps] ?? '8n');
 
 const toToneNote = (note: PlayableNote, index: number) => `${note.pitchClass}${3 + Math.floor(index / 2)}`;
 
@@ -39,7 +43,9 @@ export function voiceLead(chords: PlayableChord[]) {
 
 export function useToneEngine(instrument: Instrument, reverbAmount: number) {
   const synth = useRef<Tone.PolySynth | null>(null);
+  const melodySynth = useRef<Tone.Synth | null>(null);
   const sequence = useRef<Tone.Part | null>(null);
+  const melodySequence = useRef<Tone.Part | null>(null);
   const reverb = useRef<Tone.Reverb | null>(null);
 
   const start = async () => {
@@ -56,6 +62,8 @@ export function useToneEngine(instrument: Instrument, reverbAmount: number) {
   const stop = () => {
     sequence.current?.dispose();
     sequence.current = null;
+    melodySequence.current?.dispose();
+    melodySequence.current = null;
     const transport = Tone.getTransport();
     transport.stop();
     transport.cancel();
@@ -73,8 +81,13 @@ export function useToneEngine(instrument: Instrument, reverbAmount: number) {
     notes.forEach((note, index) => activeSynth.triggerAttackRelease(toToneNote(note, 0), '8n', startTime + index * 0.3));
   };
 
-  const playLoop = async (chords: PlayableChord[], bpm: number, rhythm: Rhythm, onChordChange?: (index: number) => void) => {
+  const playLoop = async (chords: PlayableChord[], bpm: number, rhythm: Rhythm, onChordChange?: (index: number) => void, melody: PlayableMelodyEvent[] = [], onMelodyChange?: (id: string | null) => void, playAccompaniment = true) => {
     const activeSynth = await start();
+    if (!melodySynth.current) {
+      melodySynth.current = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.02, decay: 0.12, sustain: 0.42, release: 0.55 } }).connect(reverb.current!);
+      melodySynth.current.volume.value = -5;
+    }
+    const activeMelodySynth = melodySynth.current;
     stop();
     const transport = Tone.getTransport();
     transport.bpm.value = bpm;
@@ -84,18 +97,28 @@ export function useToneEngine(instrument: Instrument, reverbAmount: number) {
     const voiced = voiceLead(chords);
     const hits = rhythmPattern(rhythm);
     sequence.current = new Tone.Part<{ time: string; notes: string[]; bass?: string; index: number; isDownbeat: boolean }>((time, event) => {
-      activeSynth.triggerAttackRelease(event.notes, rhythm === 'straight' ? '2n' : '8n', time);
-      if (event.bass) activeSynth.triggerAttackRelease(event.bass, '8n', time, 0.7);
+      if (playAccompaniment) activeSynth.triggerAttackRelease(event.notes, rhythm === 'straight' ? '2n' : '8n', time);
+      if (playAccompaniment && event.bass) activeSynth.triggerAttackRelease(event.bass, '8n', time, 0.7);
       // Transport callbacks run on Tone's audio clock. Hand UI state back to the
       // draw clock so React updates in sync with the bar that is being heard.
       if (event.isDownbeat) Tone.Draw.schedule(() => onChordChange?.(event.index), time);
     }, chords.flatMap((chord, index) => hits.map((hit, hitIndex) => ({ time: `${index}:${hit.slice(2)}`, notes: voiced[index], index, isDownbeat: hitIndex === 0, bass: rhythm !== 'straight' && (hitIndex === 0 || hitIndex === 2) ? `${chord.notes[0].pitchClass}2` : undefined }))));
+    const melodyByPosition = new Map(melody.map(event => [`${event.bar}-${event.step}`, event]));
+    melodySequence.current = new Tone.Part<{ time: string; id: string | null; pitch?: string; duration?: string }>((time, event) => {
+      if (event.pitch) activeMelodySynth.triggerAttackRelease(event.pitch, event.duration ?? '8n', time, 0.82);
+      Tone.Draw.schedule(() => onMelodyChange?.(event.id), time);
+    }, chords.flatMap((_, bar) => Array.from({ length: 8 }, (_, step) => {
+      const starting = melodyByPosition.get(`${bar}-${step}`);
+      const sounding = melody.find(event => event.bar === bar && step >= event.step && step < event.step + (event.durationSteps ?? 1));
+      return { time: melodyEventTime(bar, step), id: sounding?.id ?? null, pitch: starting?.pitch, duration: starting ? melodyDuration(starting.durationSteps) : undefined };
+    })));
     sequence.current.start(0);
+    melodySequence.current.start(0);
     transport.start('+0.05');
   };
 
   useEffect(() => { if (reverb.current) reverb.current.wet.value = reverbAmount; }, [reverbAmount]);
   useEffect(() => { synth.current?.dispose(); synth.current = null; }, [instrument]);
-  useEffect(() => () => { stop(); synth.current?.dispose(); reverb.current?.dispose(); }, []);
+  useEffect(() => () => { stop(); synth.current?.dispose(); melodySynth.current?.dispose(); reverb.current?.dispose(); }, []);
   return { playChord, playScale, playLoop, stop };
 }
