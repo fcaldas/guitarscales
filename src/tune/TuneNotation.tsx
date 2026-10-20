@@ -70,9 +70,12 @@ export function TuneNotation({ chords, notes, activeNoteId, selectedBar, selecte
       }
       tickables[0]?.addModifier(new ChordSymbol().addText(chord.name).setVertical('top').setHorizontal('left'), 0);
       const voice = new Voice({ numBeats: 4, beatValue: 4 }).addTickables(tickables);
+      // Attach beams before the notes are drawn. Otherwise VexFlow renders the
+      // individual quaver flags first and the connecting beam on top of them.
+      const beams = Beam.generateBeams(tickables);
       new Formatter().joinVoices([voice]).format([voice], bar === 0 ? TUNE_BAR_WIDTH - 72 : TUNE_BAR_WIDTH - 34);
       voice.draw(context, stave);
-      Beam.generateBeams(tickables).forEach(beam => beam.setContext(context).draw());
+      beams.forEach(beam => beam.setContext(context).draw());
     });
   }, [activeNoteId, chords, notes]);
 
