@@ -256,7 +256,7 @@ select:hover { border-color: var(--color-focus); }
 .note-value-icon { width: 29px; height: 29px; overflow: visible; fill: currentColor; color: var(--color-ink); }
 .note-value-icon .open { fill: var(--color-surface); stroke: currentColor; stroke-width: 2.4; }
 .note-value-icon .note-stem { fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 2; }
-.note-value-icon .note-flag { fill: currentColor; stroke: none; }
+.note-value-icon .note-flag { fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 2.4; }
 .note-value-icon .note-dot { fill: currentColor; }
 .duration-palette button span { font-size: 10px; }
 .duration-palette button:hover, .duration-palette button.selected { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-surface-elevated); }

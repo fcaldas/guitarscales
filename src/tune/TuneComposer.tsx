@@ -13,7 +13,7 @@ function NoteValueIcon({ duration }: { duration: TuneDurationSteps }) {
   return <svg className="note-value-icon" viewBox="0 0 32 32" aria-hidden="true">
     <ellipse className={open ? 'open' : ''} cx={duration === 8 ? 16 : 11} cy={duration === 8 ? 18 : 23} rx={duration === 8 ? 7 : 5.5} ry={duration === 8 ? 3.8 : 3.6} transform={`rotate(-12 ${duration === 8 ? 16 : 11} ${duration === 8 ? 18 : 23})`} />
     {stemmed && <path className="note-stem" d="M16 22 V5" />}
-    {duration === 1 && <path className="note-flag" d="M16 5 C25 7 25 14 19 18 C22 13 20 10 16 10" />}
+    {duration === 1 && <path className="note-flag" d="M16 5 C23 6 25 11 23 15 C22 17 20 18 19 19" />}
     {duration === 3 && <circle className="note-dot" cx="25" cy="22" r="2" />}
   </svg>;
 }
