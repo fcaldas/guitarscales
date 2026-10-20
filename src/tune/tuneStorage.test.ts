@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSavedTunes, type SavedTune } from './tuneStorage';
+import { migrateLegacyTunes, parseSavedTunes, type SavedTune } from './tuneStorage';
 
 const tune: SavedTune = {
   id: 'blue-bossa', name: 'Blue idea', savedAt: '2026-10-11T12:00:00.000Z', root: 'C', scaleName: 'Major (Ionian)', bpm: 96, rhythm: 'bossa',
@@ -12,5 +12,9 @@ describe('saved tune storage', () => {
   it('ignores malformed or unrelated stored data', () => {
     expect(parseSavedTunes('{bad json')).toEqual([]);
     expect(parseSavedTunes(JSON.stringify([{ id: 'missing-fields' }, null]))).toEqual([]);
+  });
+  it('migrates the old quaver grid onto semiquaver subdivisions', () => {
+    const migrated = migrateLegacyTunes([{ ...tune, notes: [{ id: '0-3', bar: 0, step: 3, pitch: 'F4', label: 'F4', durationSteps: 2 }] }]);
+    expect(migrated[0].notes[0]).toMatchObject({ id: '0-6', step: 6, durationSteps: 4 });
   });
 });

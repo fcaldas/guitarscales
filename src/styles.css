@@ -239,7 +239,7 @@ select:hover { border-color: var(--color-focus); }
 .tune-notation-canvas { width: max-content; min-width: 100%; height: 164px; }
 .tune-notation-canvas svg { display: block; min-width: 0; }
 .tune-score-hit-grid { position: absolute; top: 45px; left: 8px; display: flex; height: 91px; touch-action: pan-x; }
-.tune-score-hit-bar { display: grid; grid-template-columns: repeat(8, 1fr); width: 236px; }
+.tune-score-hit-bar { display: grid; grid-template-columns: repeat(16, 1fr); width: 236px; }
 .tune-score-hit-bar button { position: relative; min-width: 0; border: 0; border-left: 1px solid transparent; cursor: text; background: transparent; touch-action: pan-x; }
 .tune-score-hit-bar button:hover { background: rgb(114 81 255 / 7%); }
 .tune-score-hit-bar button.has-note:hover { background: rgb(255 61 129 / 7%); }

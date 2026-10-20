@@ -22,8 +22,8 @@ export const rhythmPattern = (rhythm: Rhythm): string[] => ({
   straight: ['0:0'],
 }[rhythm]);
 
-export const melodyEventTime = (bar: number, step: number) => `${bar}:${Math.floor(step / 2)}:${step % 2 ? 2 : 0}`;
-export const melodyDuration = (durationSteps = 1) => ({ 1: '8n', 2: '4n', 3: '4n.', 4: '2n', 8: '1n' }[durationSteps] ?? '8n');
+export const melodyEventTime = (bar: number, step: number) => `${bar}:${Math.floor(step / 4)}:${step % 4}`;
+export const melodyDuration = (durationSteps = 2) => ({ 1: '16n', 2: '8n', 4: '4n', 6: '4n.', 8: '2n', 16: '1n' }[durationSteps] ?? '8n');
 
 const toToneNote = (note: PlayableNote, index: number) => `${note.pitchClass}${3 + Math.floor(index / 2)}`;
 
@@ -107,7 +107,7 @@ export function useToneEngine(instrument: Instrument, reverbAmount: number) {
     melodySequence.current = new Tone.Part<{ time: string; id: string | null; pitch?: string; duration?: string }>((time, event) => {
       if (event.pitch) activeMelodySynth.triggerAttackRelease(event.pitch, event.duration ?? '8n', time, 0.82);
       Tone.Draw.schedule(() => onMelodyChange?.(event.id), time);
-    }, chords.flatMap((_, bar) => Array.from({ length: 8 }, (_, step) => {
+    }, chords.flatMap((_, bar) => Array.from({ length: 16 }, (_, step) => {
       const starting = melodyByPosition.get(`${bar}-${step}`);
       const sounding = melody.find(event => event.bar === bar && step >= event.step && step < event.step + (event.durationSteps ?? 1));
       return { time: melodyEventTime(bar, step), id: sounding?.id ?? null, pitch: starting?.pitch, duration: starting ? melodyDuration(starting.durationSteps) : undefined };

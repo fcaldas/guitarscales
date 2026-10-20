@@ -1,6 +1,6 @@
-export const STEPS_PER_BAR = 8;
+export const STEPS_PER_BAR = 16;
 
-export type TuneDurationSteps = 1 | 2 | 3 | 4 | 8;
+export type TuneDurationSteps = 1 | 2 | 4 | 6 | 8 | 16;
 
 export type TuneNote = {
   id: string;
@@ -8,7 +8,7 @@ export type TuneNote = {
   step: number;
   pitch: string;
   label: string;
-  /** Number of eighth-note subdivisions. Older saved tunes default to one. */
+  /** Number of semiquaver subdivisions. */
   durationSteps?: TuneDurationSteps;
 };
 
@@ -21,11 +21,12 @@ export type TunePitch = {
 export type TuneCursor = { bar: number; step: number };
 
 export const DURATION_OPTIONS: Array<{ steps: TuneDurationSteps; label: string }> = [
-  { steps: 1, label: 'Quaver' },
-  { steps: 2, label: 'Crotchet' },
-  { steps: 3, label: 'Dotted crotchet' },
-  { steps: 4, label: 'Minim' },
-  { steps: 8, label: 'Semibreve' },
+  { steps: 1, label: 'Semiquaver' },
+  { steps: 2, label: 'Quaver' },
+  { steps: 4, label: 'Crotchet' },
+  { steps: 6, label: 'Dotted crotchet' },
+  { steps: 8, label: 'Minim' },
+  { steps: 16, label: 'Semibreve' },
 ];
 
 export function tuneNoteId(bar: number, step: number) {
@@ -33,7 +34,7 @@ export function tuneNoteId(bar: number, step: number) {
 }
 
 export function tuneNoteDuration(note: TuneNote): TuneDurationSteps {
-  return note.durationSteps ?? 1;
+  return note.durationSteps ?? 2;
 }
 
 export function noteAtPosition(notes: TuneNote[], bar: number, step: number) {
@@ -42,7 +43,7 @@ export function noteAtPosition(notes: TuneNote[], bar: number, step: number) {
 
 function fittedDuration(step: number, requested: TuneDurationSteps): TuneDurationSteps {
   const remaining = STEPS_PER_BAR - step;
-  return ([8, 4, 3, 2, 1] as TuneDurationSteps[]).find(duration => duration <= requested && duration <= remaining) ?? 1;
+  return ([16, 8, 6, 4, 2, 1] as TuneDurationSteps[]).find(duration => duration <= requested && duration <= remaining) ?? 1;
 }
 
 function overlaps(note: TuneNote, bar: number, step: number, duration: number) {
@@ -83,8 +84,8 @@ export function advanceTuneCursor(cursor: TuneCursor, duration: TuneDurationStep
 export function setTuneNote(notes: TuneNote[], bar: number, step: number, selectedPitch: TunePitch) {
   const id = tuneNoteId(bar, step);
   const existing = notes.find(note => note.id === id);
-  if (existing?.pitch === selectedPitch.pitch && tuneNoteDuration(existing) === 1) return notes.filter(note => note.id !== id);
-  return placeTuneNote(notes, bar, step, selectedPitch, 1);
+  if (existing?.pitch === selectedPitch.pitch && tuneNoteDuration(existing) === 2) return notes.filter(note => note.id !== id);
+  return placeTuneNote(notes, bar, step, selectedPitch, 2);
 }
 
 export function removeTuneBar(notes: TuneNote[], removedBar: number) {

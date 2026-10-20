@@ -8,13 +8,14 @@ type ComposerChord = { name: string };
 type ComposerScaleNote = { pitchClass: string; name: string };
 
 function NoteValueIcon({ duration }: { duration: TuneDurationSteps }) {
-  const open = duration === 4 || duration === 8;
-  const stemmed = duration !== 8;
+  const open = duration === 8 || duration === 16;
+  const stemmed = duration !== 16;
   return <svg className="note-value-icon" viewBox="0 0 32 32" aria-hidden="true">
-    <ellipse className={open ? 'open' : ''} cx={duration === 8 ? 16 : 11} cy={duration === 8 ? 18 : 23} rx={duration === 8 ? 7 : 5.5} ry={duration === 8 ? 3.8 : 3.6} transform={`rotate(-12 ${duration === 8 ? 16 : 11} ${duration === 8 ? 18 : 23})`} />
+    <ellipse className={open ? 'open' : ''} cx={duration === 16 ? 16 : 11} cy={duration === 16 ? 18 : 23} rx={duration === 16 ? 7 : 5.5} ry={duration === 16 ? 3.8 : 3.6} transform={`rotate(-12 ${duration === 16 ? 16 : 11} ${duration === 16 ? 18 : 23})`} />
     {stemmed && <path className="note-stem" d="M16 22 V5" />}
-    {duration === 1 && <path className="note-flag" d="M16 5 C23 6 25 11 23 15 C22 17 20 18 19 19" />}
-    {duration === 3 && <circle className="note-dot" cx="25" cy="22" r="2" />}
+    {(duration === 1 || duration === 2) && <path className="note-flag" d="M16 5 C23 6 25 11 23 15 C22 17 20 18 19 19" />}
+    {duration === 1 && <path className="note-flag" d="M16 10 C22 11 24 15 22 19 C21 20 20 21 19 22" />}
+    {duration === 6 && <circle className="note-dot" cx="25" cy="22" r="2" />}
   </svg>;
 }
 
@@ -51,7 +52,7 @@ export function TuneComposer({ chords, scale, root, bpm, rhythm, notes, savedTun
   useEffect(() => { if (cursor.bar >= chords.length) setCursor({ bar: Math.max(0, chords.length - 1), step: 0 }); }, [chords.length, cursor.bar]);
   const chosenPitch = pitches.find(pitch => pitch.pitch === selectedPitch) ?? pitches[0];
   const selectedNote = noteAtPosition(notes, cursor.bar, cursor.step);
-  const beatLabel = `${Math.floor(cursor.step / 2) + 1}${cursor.step % 2 ? ' and' : ''}`;
+  const beatLabel = `${Math.floor(cursor.step / 4) + 1}${['', ' e', ' and', ' a'][cursor.step % 4]}`;
 
   const selectPosition = (bar: number, step: number) => {
     const note = noteAtPosition(notes, bar, step);

@@ -7,12 +7,12 @@ type NotationChord = { name: string };
 export const TUNE_BAR_WIDTH = 236;
 const HEIGHT = 164;
 
-export const vexDurationCode = (duration: TuneDurationSteps) => ({ 1: '8', 2: 'q', 3: 'qd', 4: 'h', 8: 'w' }[duration]);
+export const vexDurationCode = (duration: TuneDurationSteps) => ({ 1: '16', 2: '8', 4: 'q', 6: 'qd', 8: 'h', 16: 'w' }[duration]);
 
 function restDurations(length: number) {
   const durations: TuneDurationSteps[] = [];
   let remaining = length;
-  for (const duration of [8, 4, 3, 2, 1] as TuneDurationSteps[]) {
+  for (const duration of [16, 8, 6, 4, 2, 1] as TuneDurationSteps[]) {
     while (remaining >= duration) { durations.push(duration); remaining -= duration; }
   }
   return durations;
@@ -54,7 +54,7 @@ export function TuneNotation({ chords, notes, activeNoteId, selectedBar, selecte
           const staveNote = new StaveNote({ clef: 'treble', keys: [staveKey(tuneNote.label)], duration: vexDurationCode(duration) });
           const accidental = accidentalFor(tuneNote.label);
           if (accidental) staveNote.addModifier(new Accidental(accidental), 0);
-          if (duration === 3) Dot.buildAndAttach([staveNote]);
+          if (duration === 6) Dot.buildAndAttach([staveNote]);
           if (tuneNote.id === activeNoteId) staveNote.setStyle({ fillStyle: '#ff3d81', strokeStyle: '#ff3d81' });
           tickables.push(staveNote);
           step += duration;
@@ -62,7 +62,7 @@ export function TuneNotation({ chords, notes, activeNoteId, selectedBar, selecte
           const nextStart = barNotes.find(note => note.step > step)?.step ?? STEPS_PER_BAR;
           for (const duration of restDurations(nextStart - step)) {
             const rest = new StaveNote({ clef: 'treble', keys: ['b/4'], duration: `${vexDurationCode(duration)}r` });
-            if (duration === 3) Dot.buildAndAttach([rest]);
+            if (duration === 6) Dot.buildAndAttach([rest]);
             tickables.push(rest);
           }
           step = nextStart;
@@ -86,7 +86,8 @@ export function TuneNotation({ chords, notes, activeNoteId, selectedBar, selecte
       <div className="tune-score-hit-grid" aria-label="Choose a position in the score">{chords.map((chord, bar) => <div className="tune-score-hit-bar" key={`${chord.name}-${bar}`}>{Array.from({ length: STEPS_PER_BAR }, (_, step) => {
         const soundingNote = noteAtPosition(notes, bar, step);
         const selected = selectedBar === bar && selectedStep === step;
-        return <button type="button" key={step} className={`${selected ? 'is-selected' : ''} ${soundingNote ? 'has-note' : ''}`} aria-label={`Select bar ${bar + 1}, ${step % 2 ? 'and of ' : 'beat '}${Math.floor(step / 2) + 1}${soundingNote ? `, ${soundingNote.label}` : ''}`} aria-pressed={selected} onClick={() => onSelectPosition(bar, step)} />;
+        const subdivision = ['', ' e', ' and', ' a'][step % 4];
+        return <button type="button" key={step} className={`${selected ? 'is-selected' : ''} ${soundingNote ? 'has-note' : ''}`} aria-label={`Select bar ${bar + 1}, beat ${Math.floor(step / 4) + 1}${subdivision}${soundingNote ? `, ${soundingNote.label}` : ''}`} aria-pressed={selected} onClick={() => onSelectPosition(bar, step)} />;
       })}</div>)}</div>
     </div>
   </div>;

@@ -1,7 +1,8 @@
 import type { Rhythm } from '../RhythmNotation';
-import type { TuneNote } from './tuneModel';
+import { tuneNoteId, type TuneDurationSteps, type TuneNote } from './tuneModel';
 
-export const TUNE_STORAGE_KEY = 'guitarScales.savedTunes.v1';
+export const TUNE_STORAGE_KEY = 'guitarScales.savedTunes.v2';
+export const LEGACY_TUNE_STORAGE_KEY = 'guitarScales.savedTunes.v1';
 
 export type SavedTune = {
   id: string;
@@ -32,8 +33,21 @@ export function parseSavedTunes(value: string | null): SavedTune[] {
   }
 }
 
+export function migrateLegacyTunes(tunes: SavedTune[]): SavedTune[] {
+  return tunes.map(tune => ({
+    ...tune,
+    notes: tune.notes.map(note => {
+      const step = note.step * 2;
+      return { ...note, id: tuneNoteId(note.bar, step), step, durationSteps: ((note.durationSteps ?? 1) * 2) as TuneDurationSteps };
+    }),
+  }));
+}
+
 export function readSavedTunes() {
-  return typeof window === 'undefined' ? [] : parseSavedTunes(window.localStorage.getItem(TUNE_STORAGE_KEY));
+  if (typeof window === 'undefined') return [];
+  const current = window.localStorage.getItem(TUNE_STORAGE_KEY);
+  if (current) return parseSavedTunes(current);
+  return migrateLegacyTunes(parseSavedTunes(window.localStorage.getItem(LEGACY_TUNE_STORAGE_KEY)));
 }
 
 export function writeSavedTunes(tunes: SavedTune[]) {

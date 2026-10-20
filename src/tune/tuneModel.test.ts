@@ -6,34 +6,34 @@ const d4: TunePitch = { pitch: 'D4', label: 'D4', pitchClass: 'D' };
 
 describe('tune editing', () => {
   it('uses British names for each available note value', () => {
-    expect(DURATION_OPTIONS.map(option => option.label)).toEqual(['Quaver', 'Crotchet', 'Dotted crotchet', 'Minim', 'Semibreve']);
+    expect(DURATION_OPTIONS.map(option => option.label)).toEqual(['Semiquaver', 'Quaver', 'Crotchet', 'Dotted crotchet', 'Minim', 'Semibreve']);
   });
 
   it('adds, replaces, and toggles notes at an eighth-note position', () => {
     const added = setTuneNote([], 0, 2, c4);
-    expect(added).toEqual([{ id: '0-2', bar: 0, step: 2, pitch: 'C4', label: 'C4', durationSteps: 1 }]);
+    expect(added).toEqual([{ id: '0-2', bar: 0, step: 2, pitch: 'C4', label: 'C4', durationSteps: 2 }]);
     expect(setTuneNote(added, 0, 2, d4)[0].pitch).toBe('D4');
     expect(setTuneNote(added, 0, 2, c4)).toEqual([]);
   });
 
   it('places sustained notes, finds them from covered positions, and removes overlaps', () => {
-    const halfNote = placeTuneNote([], 0, 0, c4, 4);
+    const halfNote = placeTuneNote([], 0, 0, c4, 8);
     expect(noteAtPosition(halfNote, 0, 3)?.id).toBe('0-0');
     const replaced = placeTuneNote(halfNote, 0, 2, d4, 2);
     expect(replaced).toEqual([{ id: '0-2', bar: 0, step: 2, pitch: 'D4', label: 'D4', durationSteps: 2 }]);
   });
 
   it('resizes notes without allowing collisions and treats old saved notes as eighth notes', () => {
-    const first = placeTuneNote([], 0, 0, c4, 2);
+    const first = placeTuneNote([], 0, 0, c4, 4);
     const twoNotes = placeTuneNote(first, 0, 3, d4, 1);
-    expect(resizeTuneNote(twoNotes, '0-0', 4)).toHaveLength(1);
-    expect(tuneNoteDuration({ id: 'old', bar: 0, step: 0, pitch: 'C4', label: 'C4' })).toBe(1);
+    expect(resizeTuneNote(twoNotes, '0-0', 8)).toHaveLength(1);
+    expect(tuneNoteDuration({ id: 'old', bar: 0, step: 0, pitch: 'C4', label: 'C4' })).toBe(2);
   });
 
   it('turns the selected note into a rest and advances across bar lines', () => {
-    const notes = placeTuneNote([], 0, 0, c4, 4);
+    const notes = placeTuneNote([], 0, 0, c4, 8);
     expect(clearTunePosition(notes, 0, 2)).toEqual([]);
-    expect(advanceTuneCursor({ bar: 0, step: 6 }, 2, 3)).toEqual({ bar: 1, step: 0 });
+    expect(advanceTuneCursor({ bar: 0, step: 12 }, 4, 3)).toEqual({ bar: 1, step: 0 });
   });
 
   it('removes a deleted chord bar and closes the remaining gap', () => {
