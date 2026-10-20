@@ -253,7 +253,11 @@ select:hover { border-color: var(--color-focus); }
 .phrase-cursor > div:first-child > span { color: var(--color-text-muted); font-size: 13px; }
 .duration-palette { display: flex; gap: 6px; }
 .duration-palette button { display: grid; min-width: 60px; min-height: 54px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 7px; color: var(--color-text-muted); place-items: center; cursor: pointer; background: var(--color-surface); }
-.duration-palette button b { color: var(--color-ink); font-family: Georgia, serif; font-size: 24px; line-height: .9; }
+.note-value-icon { width: 29px; height: 29px; overflow: visible; fill: currentColor; color: var(--color-ink); }
+.note-value-icon .open { fill: var(--color-surface); stroke: currentColor; stroke-width: 2.4; }
+.note-value-icon .note-stem { fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 2; }
+.note-value-icon .note-flag { fill: currentColor; stroke: none; }
+.note-value-icon .note-dot { fill: currentColor; }
 .duration-palette button span { font-size: 10px; }
 .duration-palette button:hover, .duration-palette button.selected { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-surface-elevated); }
 .duration-palette button.selected { box-shadow: inset 0 -3px 0 var(--color-primary); }

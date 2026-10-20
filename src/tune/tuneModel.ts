@@ -20,12 +20,12 @@ export type TunePitch = {
 
 export type TuneCursor = { bar: number; step: number };
 
-export const DURATION_OPTIONS: Array<{ steps: TuneDurationSteps; label: string; symbol: string }> = [
-  { steps: 1, label: 'Quaver', symbol: '♪' },
-  { steps: 2, label: 'Crotchet', symbol: '♩' },
-  { steps: 3, label: 'Dotted crotchet', symbol: '♩.' },
-  { steps: 4, label: 'Minim', symbol: '𝅗𝅥' },
-  { steps: 8, label: 'Semibreve', symbol: '𝅝' },
+export const DURATION_OPTIONS: Array<{ steps: TuneDurationSteps; label: string }> = [
+  { steps: 1, label: 'Quaver' },
+  { steps: 2, label: 'Crotchet' },
+  { steps: 3, label: 'Dotted crotchet' },
+  { steps: 4, label: 'Minim' },
+  { steps: 8, label: 'Semibreve' },
 ];
 
 export function tuneNoteId(bar: number, step: number) {

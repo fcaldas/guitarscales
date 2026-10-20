@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { advanceTuneCursor, clearTunePosition, noteAtPosition, placeTuneNote, removeTuneBar, resizeTuneNote, setTuneNote, trimTuneToBars, tuneNoteDuration, tunePitchPalette, type TunePitch } from './tuneModel';
+import { DURATION_OPTIONS, advanceTuneCursor, clearTunePosition, noteAtPosition, placeTuneNote, removeTuneBar, resizeTuneNote, setTuneNote, trimTuneToBars, tuneNoteDuration, tunePitchPalette, type TunePitch } from './tuneModel';
 
 const c4: TunePitch = { pitch: 'C4', label: 'C4', pitchClass: 'C' };
 const d4: TunePitch = { pitch: 'D4', label: 'D4', pitchClass: 'D' };
 
 describe('tune editing', () => {
+  it('uses British names for each available note value', () => {
+    expect(DURATION_OPTIONS.map(option => option.label)).toEqual(['Quaver', 'Crotchet', 'Dotted crotchet', 'Minim', 'Semibreve']);
+  });
+
   it('adds, replaces, and toggles notes at an eighth-note position', () => {
     const added = setTuneNote([], 0, 2, c4);
     expect(added).toEqual([{ id: '0-2', bar: 0, step: 2, pitch: 'C4', label: 'C4', durationSteps: 1 }]);
