@@ -7,7 +7,7 @@ type NotationChord = { name: string };
 export const TUNE_BAR_WIDTH = 236;
 const HEIGHT = 164;
 
-const durationCode = (duration: TuneDurationSteps) => ({ 1: '8', 2: 'q', 3: 'q', 4: 'h', 8: 'w' }[duration]);
+export const vexDurationCode = (duration: TuneDurationSteps) => ({ 1: '8', 2: 'q', 3: 'qd', 4: 'h', 8: 'w' }[duration]);
 
 function restDurations(length: number) {
   const durations: TuneDurationSteps[] = [];
@@ -51,7 +51,7 @@ export function TuneNotation({ chords, notes, activeNoteId, selectedBar, selecte
         const tuneNote = barNotes.find(note => note.step === step);
         if (tuneNote) {
           const duration = tuneNoteDuration(tuneNote);
-          const staveNote = new StaveNote({ clef: 'treble', keys: [staveKey(tuneNote.label)], duration: durationCode(duration) });
+          const staveNote = new StaveNote({ clef: 'treble', keys: [staveKey(tuneNote.label)], duration: vexDurationCode(duration) });
           const accidental = accidentalFor(tuneNote.label);
           if (accidental) staveNote.addModifier(new Accidental(accidental), 0);
           if (duration === 3) Dot.buildAndAttach([staveNote]);
@@ -61,7 +61,7 @@ export function TuneNotation({ chords, notes, activeNoteId, selectedBar, selecte
         } else {
           const nextStart = barNotes.find(note => note.step > step)?.step ?? STEPS_PER_BAR;
           for (const duration of restDurations(nextStart - step)) {
-            const rest = new StaveNote({ clef: 'treble', keys: ['b/4'], duration: `${durationCode(duration)}r` });
+            const rest = new StaveNote({ clef: 'treble', keys: ['b/4'], duration: `${vexDurationCode(duration)}r` });
             if (duration === 3) Dot.buildAndAttach([rest]);
             tickables.push(rest);
           }
